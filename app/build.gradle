@@ -14,9 +14,22 @@ android {
         versionName '2.0-test'
     }
 
+    signingConfigs {
+        testKey {
+            storeFile file('football-test-key.jks')
+            storePassword 'footballtest123'
+            keyAlias 'footballtest'
+            keyPassword 'footballtest123'
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig signingConfigs.testKey
+        }
         release {
             minifyEnabled false
+            signingConfig signingConfigs.testKey
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
