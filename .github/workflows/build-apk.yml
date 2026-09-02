@@ -16,6 +16,8 @@ jobs:
           cat goals-overlay.b64.part1 goals-overlay.b64.part2 goals-overlay.b64.part3 goals-overlay.b64.part4 goals-overlay.b64.part5 goals-overlay.b64.part6 | base64 -d > /tmp/goals-overlay.zip
           unzip -t /tmp/goals-overlay.zip
           unzip -o /tmp/goals-overlay.zip
+      - name: Apply v1.1 redesign
+        run: python tools/patch_goals_v11.py
       - name: Java 17
         uses: actions/setup-java@v4
         with:
@@ -34,6 +36,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: goals-stats-apk
+          name: goals-stats-v11-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
