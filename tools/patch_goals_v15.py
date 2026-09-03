@@ -203,7 +203,7 @@ sub(
         Button b = new Button(this);
         b.setAllCaps(false);
         String shown = value == null || value.isEmpty() ? "Alege" : value;
-        b.setText(label + "\\n" + shown + " ▾");
+        b.setText(label + System.lineSeparator() + shown + " ▾");
         b.setTextSize(10);
         b.setGravity(Gravity.CENTER);
         b.setSingleLine(false);
