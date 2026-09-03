@@ -2,33 +2,6 @@ plugins {
     id 'com.android.application' version '8.8.2' apply false
 }
 
-// Goals Stats v1.3 patch. GitHub Actions has already unpacked the Goals Stats
-// overlay and applied the UI patches before Gradle starts, so point the
-// generated source at the Blogger-backed data page and bump the test version.
-def javaFile = file('app/src/main/java/com/serghei/footballpredictions/MainActivity.java')
-if (!javaFile.exists()) {
-    throw new GradleException('Goals Stats MainActivity.java was not found')
-}
-
-def source = javaFile.getText('UTF-8')
-def pattern = ~/(?s)(?:static\s+final\s+)?String\[\]\s+BLOGGER_URLS\s*=\s*(?:new\s+String\[\]\s*)?\{.*?\};/
-def replacement = '''static final String[] BLOGGER_URLS = {
-    "https://www.bestsportstats.com/p/bssgoalsenglandpremierleague2024.html"
-};'''
-
-if (!(source =~ pattern).find()) {
-    throw new GradleException('BLOGGER_URLS declaration was not found in Goals Stats source')
-}
-
-source = source.replaceFirst(pattern, replacement)
-javaFile.write(source, 'UTF-8')
-
-def appGradle = file('app/build.gradle')
-if (!appGradle.exists()) {
-    throw new GradleException('app/build.gradle was not found')
-}
-
-def appText = appGradle.getText('UTF-8')
-appText = appText.replace('versionCode 2', 'versionCode 4')
-                 .replace("versionName '1.1-test'", "versionName '1.3-test'")
-appGradle.write(appText, 'UTF-8')
+// Goals Stats v1.4 sources and version are prepared by the GitHub Actions
+// patch steps before Gradle starts. Keep the root build file neutral so the
+// app can use the dynamic Blogger INDEX instead of a hard-coded URL list.
