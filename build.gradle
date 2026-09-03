@@ -2,9 +2,9 @@ plugins {
     id 'com.android.application' version '8.8.2' apply false
 }
 
-// Goals Stats v1.2 patch. GitHub Actions has already unpacked the Goals Stats
-// overlay and applied the v1.1 redesign before Gradle starts, so patch the
-// generated files now, before the :app project is evaluated.
+// Goals Stats v1.3 patch. GitHub Actions has already unpacked the Goals Stats
+// overlay and applied the UI patches before Gradle starts, so point the
+// generated source at the Blogger-backed data page and bump the test version.
 def javaFile = file('app/src/main/java/com/serghei/footballpredictions/MainActivity.java')
 if (!javaFile.exists()) {
     throw new GradleException('Goals Stats MainActivity.java was not found')
@@ -29,6 +29,6 @@ if (!appGradle.exists()) {
 }
 
 def appText = appGradle.getText('UTF-8')
-appText = appText.replace('versionCode 2', 'versionCode 3')
-                 .replace("versionName '1.1-test'", "versionName '1.2-test'")
+appText = appText.replace('versionCode 2', 'versionCode 4')
+                 .replace("versionName '1.1-test'", "versionName '1.3-test'")
 appGradle.write(appText, 'UTF-8')
