@@ -20,6 +20,12 @@ jobs:
         run: python tools/patch_goals_v11.py
       - name: Apply v1.3 compact stats redesign
         run: python tools/run_goals_v13.py
+      - name: Upload patched source
+        uses: actions/upload-artifact@v4
+        with:
+          name: goals-stats-v13-source
+          path: app/src/main/java/com/serghei/footballpredictions/MainActivity.java
+          if-no-files-found: error
       - name: Java 17
         uses: actions/setup-java@v4
         with:
