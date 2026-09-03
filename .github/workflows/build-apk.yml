@@ -22,10 +22,12 @@ jobs:
         run: python tools/run_goals_v13.py
       - name: Apply v1.4 multi-league index
         run: python tools/patch_goals_v14.py
+      - name: Apply v1.5 compact dashboard
+        run: python tools/patch_goals_v15.py
       - name: Upload patched source
         uses: actions/upload-artifact@v4
         with:
-          name: goals-stats-v14-source
+          name: goals-stats-v15-source
           path: app/src/main/java/com/serghei/footballpredictions/MainActivity.java
           if-no-files-found: error
       - name: Java 17
@@ -46,6 +48,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: goals-stats-v14-apk
+          name: goals-stats-v15-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
