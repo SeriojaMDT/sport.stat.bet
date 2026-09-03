@@ -1,3 +1,34 @@
 plugins {
     id 'com.android.application' version '8.8.2' apply false
 }
+
+// Goals Stats v1.2 data source patch.
+// The workflow first unpacks the Goals Stats overlay and applies the v1.1 UI patch.
+// During Gradle configuration we then point that generated source at the new
+// Blogger-backed data page created by Apps Script.
+gradle.projectsEvaluated {
+    def appProject = project(':app')
+    def javaFile = file('app/src/main/java/com/serghei/footballpredictions/MainActivity.java')
+
+    if (!javaFile.exists()) {
+        throw new GradleException('Goals Stats MainActivity.java was not found')
+    }
+
+    def source = javaFile.getText('UTF-8')
+    def pattern = ~/(?s)(?:static\s+final\s+)?String\[\]\s+BLOGGER_URLS\s*=\s*(?:new\s+String\[\]\s*)?\{.*?\};/
+    def replacement = '''static final String[] BLOGGER_URLS = {
+        "https://www.bestsportstats.com/p/bssgoalsenglandpremierleague2024.html"
+    };'''
+
+    if (!(source =~ pattern).find()) {
+        throw new GradleException('BLOGGER_URLS declaration was not found in Goals Stats source')
+    }
+
+    source = source.replaceFirst(pattern, replacement)
+    javaFile.write(source, 'UTF-8')
+
+    // Keep the same signing/package identity, but bump the test version so it
+    // installs cleanly over v1.1.
+    appProject.android.defaultConfig.versionCode = 3
+    appProject.android.defaultConfig.versionName = '1.2-test'
+}
