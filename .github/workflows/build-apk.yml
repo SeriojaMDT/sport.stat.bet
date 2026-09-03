@@ -19,7 +19,7 @@ jobs:
       - name: Apply v1.1 redesign
         run: python tools/patch_goals_v11.py
       - name: Apply v1.3 compact stats redesign
-        run: python tools/patch_goals_v13.py
+        run: python tools/run_goals_v13.py
       - name: Java 17
         uses: actions/setup-java@v4
         with:
