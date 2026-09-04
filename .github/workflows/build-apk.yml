@@ -1,4 +1,4 @@
-name: Build BestSportStats V2 APK
+name: Build BestSportStats V2.1 APK
 
 on:
   push:
@@ -11,6 +11,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Apply BestSportStats V2.1 source
+        run: python tools/apply_v21_source.py
+      - name: Set V2.1 version
+        run: |
+          sed -i "s/versionCode [0-9][0-9]*/versionCode 7/" app/build.gradle
+          sed -i "s/versionName '[^']*'/versionName '2.1-test'/" app/build.gradle
       - name: Java 17
         uses: actions/setup-java@v4
         with:
@@ -26,15 +32,15 @@ jobs:
           gradle-version: '8.10.2'
       - name: Build debug APK
         run: gradle :app:assembleDebug --stacktrace
-      - name: Upload V2 source
+      - name: Upload V2.1 source
         uses: actions/upload-artifact@v4
         with:
-          name: bestsportstats-v2-source
+          name: bestsportstats-v21-source
           path: app/src/main/java/com/serghei/footballpredictions/MainActivity.java
           if-no-files-found: error
-      - name: Upload V2 APK
+      - name: Upload V2.1 APK
         uses: actions/upload-artifact@v4
         with:
-          name: bestsportstats-v2-apk
+          name: bestsportstats-v21-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
