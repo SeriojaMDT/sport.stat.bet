@@ -1,4 +1,4 @@
-name: Build Goals Stats APK
+name: Build BestSportStats V2 APK
 
 on:
   push:
@@ -11,25 +11,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Apply Goals Stats source overlay
-        run: |
-          cat goals-overlay.b64.part1 goals-overlay.b64.part2 goals-overlay.b64.part3 goals-overlay.b64.part4 goals-overlay.b64.part5 goals-overlay.b64.part6 | base64 -d > /tmp/goals-overlay.zip
-          unzip -t /tmp/goals-overlay.zip
-          unzip -o /tmp/goals-overlay.zip
-      - name: Apply v1.1 redesign
-        run: python tools/patch_goals_v11.py
-      - name: Apply v1.3 compact stats redesign
-        run: python tools/run_goals_v13.py
-      - name: Apply v1.4 multi-league index
-        run: python tools/patch_goals_v14.py
-      - name: Apply v1.5 compact dashboard
-        run: python tools/patch_goals_v15.py
-      - name: Upload patched source
-        uses: actions/upload-artifact@v4
-        with:
-          name: goals-stats-v15-source
-          path: app/src/main/java/com/serghei/footballpredictions/MainActivity.java
-          if-no-files-found: error
       - name: Java 17
         uses: actions/setup-java@v4
         with:
@@ -45,9 +26,15 @@ jobs:
           gradle-version: '8.10.2'
       - name: Build debug APK
         run: gradle :app:assembleDebug --stacktrace
-      - name: Upload APK
+      - name: Upload V2 source
         uses: actions/upload-artifact@v4
         with:
-          name: goals-stats-v15-apk
+          name: bestsportstats-v2-source
+          path: app/src/main/java/com/serghei/footballpredictions/MainActivity.java
+          if-no-files-found: error
+      - name: Upload V2 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: bestsportstats-v2-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
