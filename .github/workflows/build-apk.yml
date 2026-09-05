@@ -1,4 +1,4 @@
-name: Build BestSportStats V2.3 APK
+name: Build BestSportStats V2.4 APK
 
 on:
   push:
@@ -15,10 +15,14 @@ jobs:
         run: python tools/apply_v21_source.py
       - name: Apply BestSportStats V2.3 patch
         run: python -c "import base64,zlib; exec(zlib.decompress(base64.b64decode(open('v23-patch.b64z').read())))"
-      - name: Set V2.3 version
+      - name: Apply BestSportStats V2.4 patch
         run: |
-          sed -i "s/versionCode [0-9][0-9]*/versionCode 9/" app/build.gradle
-          sed -i "s/versionName '[^']*'/versionName '2.3-test'/" app/build.gradle
+          python -c "import base64,zlib; open('/tmp/v24.patch','wb').write(zlib.decompress(base64.b64decode(open('v24-patch.b64z').read())))"
+          patch -p0 < /tmp/v24.patch
+      - name: Set V2.4 version
+        run: |
+          sed -i "s/versionCode [0-9][0-9]*/versionCode 10/" app/build.gradle
+          sed -i "s/versionName '[^']*'/versionName '2.4-test'/" app/build.gradle
       - name: Java 17
         uses: actions/setup-java@v4
         with:
@@ -34,15 +38,15 @@ jobs:
           gradle-version: '8.10.2'
       - name: Build debug APK
         run: gradle :app:assembleDebug --stacktrace
-      - name: Upload V2.3 source
+      - name: Upload V2.4 source
         uses: actions/upload-artifact@v4
         with:
-          name: bestsportstats-v23-source
+          name: bestsportstats-v24-source
           path: app/src/main/java/com/serghei/footballpredictions/MainActivity.java
           if-no-files-found: error
-      - name: Upload V2.3 APK
+      - name: Upload V2.4 APK
         uses: actions/upload-artifact@v4
         with:
-          name: bestsportstats-v23-apk
+          name: bestsportstats-v24-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
