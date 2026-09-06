@@ -1,4 +1,4 @@
-name: Build BestSportStats V2.6 APK
+name: Build BestSportStats V2.7 APK
 
 on:
   push:
@@ -27,10 +27,14 @@ jobs:
         run: |
           python -c "import base64,zlib; open('/tmp/v26.patch','wb').write(zlib.decompress(base64.b64decode(open('v26-patch.b64z').read())))"
           patch -p0 < /tmp/v26.patch
-      - name: Set V2.6 version
+      - name: Apply BestSportStats V2.7 patch
         run: |
-          sed -i "s/versionCode [0-9][0-9]*/versionCode 12/" app/build.gradle
-          sed -i "s/versionName '[^']*'/versionName '2.6-test'/" app/build.gradle
+          python -c "import base64,zlib; open('/tmp/v27.patch','wb').write(zlib.decompress(base64.b64decode(open('v27-patch.b64z').read())))"
+          patch -p0 < /tmp/v27.patch
+      - name: Set V2.7 version
+        run: |
+          sed -i "s/versionCode [0-9][0-9]*/versionCode 13/" app/build.gradle
+          sed -i "s/versionName '[^']*'/versionName '2.7-test'/" app/build.gradle
       - name: Java 17
         uses: actions/setup-java@v4
         with:
@@ -46,15 +50,15 @@ jobs:
           gradle-version: '8.10.2'
       - name: Build debug APK
         run: gradle :app:assembleDebug --stacktrace
-      - name: Upload V2.6 source
+      - name: Upload V2.7 source
         uses: actions/upload-artifact@v4
         with:
-          name: bestsportstats-v26-source
+          name: bestsportstats-v27-source
           path: app/src/main/java/com/serghei/footballpredictions/MainActivity.java
           if-no-files-found: error
-      - name: Upload V2.6 APK
+      - name: Upload V2.7 APK
         uses: actions/upload-artifact@v4
         with:
-          name: bestsportstats-v26-apk
+          name: bestsportstats-v27-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
