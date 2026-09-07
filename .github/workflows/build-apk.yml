@@ -33,7 +33,8 @@ jobs:
           patch -p0 < /tmp/v27.patch
       - name: Apply BestSportStats V2.8 patch
         run: |
-          python -c "import base64,zlib; open('/tmp/v28.patch','wb').write(zlib.decompress(base64.b64decode(open('v28-patch.b64z').read())))"
+          cat v28-patch.b64z.part1 v28-patch.b64z.part2 v28-patch.b64z.part3 v28-patch.b64z.part4 v28-patch.b64z.part5 v28-patch.b64z.part6 v28-patch.b64z.part7 > /tmp/v28.b64
+          python -c "import base64,zlib; open('/tmp/v28.patch','wb').write(zlib.decompress(base64.b64decode(open('/tmp/v28.b64').read())))"
           patch -p0 < /tmp/v28.patch
       - name: Set V2.8 version
         run: |
