@@ -1,0 +1,120 @@
+     void chooseSeriesPeriod(){showChoice("Perioadă",new ArrayList<>(Arrays.asList("Final","Prima repriză","A doua repriză")),periodLabel(seriesPeriod),lab->{seriesPeriod="Prima repriză".equals(lab)?"HT":"A doua repriză".equals(lab)?"2HT":"FT";if(seriesUsesThreshold())seriesThreshold=defaultSeriesThreshold(seriesModule,seriesPeriod);render();});}
+     void chooseSeriesSide(){showChoice("Valoare",new ArrayList<>(Arrays.asList("Total","Echipă","Adversar")),seriesValueSide,val->{seriesValueSide=val;render();});}
+-    void chooseSeriesRule(){ArrayList<String> r=new ArrayList<>();if("goals".equals(seriesModule))r.addAll(Arrays.asList("Under","Over","BTTS Da","BTTS Nu","Par","Impar","Victorie","Egal","Înfrângere","Fără înfrângere","Marchează","Nu marchează","Fără gol primit"));else r.addAll(Arrays.asList("Over","Under"));showChoice("Tip serie",r,seriesRule,val->{seriesRule=val;render();});}
++    void chooseSeriesRule(){
++        ArrayList<String> r=new ArrayList<>();
++        if(isHalfCompareModule(seriesModule))r.addAll(Arrays.asList("1H mai mult","2H mai mult","Egal"));
++        else if("goals".equals(seriesModule))r.addAll(Arrays.asList("Under","Over","BTTS Da","BTTS Nu","Par","Impar","Victorie","Egal","Înfrângere","Fără înfrângere","Marchează","Nu marchează","Fără gol primit"));
++        else r.addAll(Arrays.asList("Over","Under"));
++        showChoice("Tip serie",r,seriesRule,val->{seriesRule=val;render();});
++    }
+     void chooseSeriesThreshold(){ArrayList<String> vals=new ArrayList<>();for(double x:seriesThresholdsFor(seriesModule,seriesPeriod))vals.add(oneThreshold(x));showChoice("Prag",vals,oneThreshold(seriesThreshold),val->{try{seriesThreshold=Double.parseDouble(val);}catch(Exception ignored){}render();});}
+     void chooseSeriesScope(){ArrayList<String> labels=new ArrayList<>(Arrays.asList("Toate","Acasă","Deplasare"));showChoice("Meciuri",labels,scopeLabel(seriesScope),lab->{seriesScope="Acasă".equals(lab)?"home":"Deplasare".equals(lab)?"away":"all";render();});}
+     void chooseSeriesMin(){ArrayList<String> vals=new ArrayList<>();for(int i=1;i<=20;i++)vals.add(i+"+");showChoice("Serie minimă",vals,seriesMin+"+",val->{try{seriesMin=Integer.parseInt(val.replace("+",""));}catch(Exception ignored){}render();});}
+ 
+     interface Pick { void go(String value); }
+     void showChoice(String title,ArrayList<String> items,String selected,Pick cb){
+-        if(items.isEmpty())return;String[] a=items.toArray(new String[0]);int checked=items.indexOf(selected);
+-        new AlertDialog.Builder(this).setTitle(title).setSingleChoiceItems(a,checked,(d,w)->{String v=a[w];d.dismiss();cb.go(v);}).setNegativeButton("Închide",null).show();
++        if(items.isEmpty())return;
++        String[] shown=new String[items.size()];for(int i=0;i<items.size();i++)shown[i]=tr(items.get(i));
++        int checked=items.indexOf(selected);
++        new AlertDialog.Builder(this).setTitle(tr(title)).setSingleChoiceItems(shown,checked,(d,w)->{String v=items.get(w);d.dismiss();cb.go(v);}).setNegativeButton(tr("Închide"),null).show();
+     }
+ 
+     ArrayList<String> countryNames(){LinkedHashSet<String> set=new LinkedHashSet<>();for(LeagueSource s:catalog)set.add(s.country);return new ArrayList<>(set);}
+@@ -2473,29 +2687,6 @@
+             if(x.available){addPredictionLine(box,metricShortLabel(m),x.label,x.confidence,PURPLE);shown=true;}
+         }
+ 
+-        // Predicții pe reprize: sunt afișate numai când există suficiente date 1H/2H.
+-        boolean halfShown=false;
+-        LinearLayout halfBox=new LinearLayout(this);halfBox.setOrientation(LinearLayout.VERTICAL);
+-        String[] periods={"HT","2HT"};
+-        for(String p:periods){
+-            String pl="HT".equals(p)?"1H":"2H";
+-            MarketPrediction g=marketPrediction(data,target,"goals",p,before);
+-            if(g.available){addPredictionLine(halfBox,"Goluri • "+pl,g.label,g.confidence,GREEN);halfShown=true;}
+-            if(data.modules.has("corners")){
+-                MarketPrediction c=marketPrediction(data,target,"corners",p,before);
+-                if(c.available){addPredictionLine(halfBox,"Cornere • "+pl,c.label,c.confidence,PURPLE);halfShown=true;}
+-            }
+-            if(data.modules.has("cards")){
+-                MarketPrediction c=marketPrediction(data,target,"cards",p,before);
+-                if(c.available){addPredictionLine(halfBox,"Cartonașe • "+pl,c.label,c.confidence,AMBER);halfShown=true;}
+-            }
+-        }
+-        if(halfShown){
+-            box.addView(text("Pe reprize",13,TEXT,true),mt(8,-2));
+-            box.addView(halfBox,mt(2,-2));
+-            shown=true;
+-        }
+-
+         if(!shown){
+             TextView no=text("Date insuficiente pentru predicții statistice relevante.",11,AMBER,true);
+             no.setPadding(d(8),d(7),d(8),d(7));no.setBackground(rounded(SOFT_AMBER,8));box.addView(no,mt(4,-2));
+@@ -2668,8 +2859,16 @@
+     ArrayList<String> availableModules(){ArrayList<String> out=new ArrayList<>();if(leagueData==null)return out;String[] order={"goals","corners","cards","shots","fouls","offsides","possession","passes","saves","xg","freeKicks"};for(String m:order)if(leagueData.modules.has(m))out.add(m);return out;}
+ 
+     ArrayList<String> availableSeriesModules(){
+-        if(!seriesAllDatabase && !seriesMultiDatabase)return availableModules();
+         ArrayList<String> out=new ArrayList<>();
++        if(!seriesAllDatabase && !seriesMultiDatabase){
++            out.addAll(availableModules());
++            if(leagueData!=null){
++                out.add("goals_halves");
++                if(leagueData.modules.has("corners"))out.add("corners_halves");
++                if(leagueData.modules.has("cards"))out.add("cards_halves");
++            }
++            return out;
++        }
+         String[] order={"goals","corners","cards","shots","fouls","offsides","possession","passes","saves","xg","freeKicks"};
+         for(String m:order){
+             for(LeagueSource src:catalog){
+@@ -2677,6 +2876,9 @@
+                 if(src.modules.has(m)){out.add(m);break;}
+             }
+         }
++        if(!out.contains("goals_halves"))out.add("goals_halves");
++        if(out.contains("corners"))out.add("corners_halves");
++        if(out.contains("cards"))out.add("cards_halves");
+         return out;
+     }
+ 
+@@ -2685,7 +2887,7 @@
+     void resetContextFilters(){scope="all";period="FT";showMoreFuture=false;}
+ 
+     String moduleLabel(String m){
+-        switch(m){case"all":return"Toate";case"goals":return"Goluri";case"corners":return"Cornere";case"cards":return"Cartonașe galbene";case"shots":return"Șuturi";case"fouls":return"Faulturi";case"offsides":return"Offside";case"possession":return"Posesie";case"passes":return"Pase";case"saves":return"Parade";case"xg":return"xG";case"freeKicks":return"Lovituri libere";default:return m;}
++        switch(m){case"all":return"Toate";case"goals":return"Goluri";case"corners":return"Cornere";case"cards":return"Cartonașe galbene";case"shots":return"Șuturi";case"fouls":return"Faulturi";case"offsides":return"Offside";case"possession":return"Posesie";case"passes":return"Pase";case"saves":return"Parade";case"xg":return"xG";case"freeKicks":return"Lovituri libere";case"goals_halves":return"Goluri • 1H vs 2H";case"corners_halves":return"Cornere • 1H vs 2H";case"cards_halves":return"Cartonașe • 1H vs 2H";default:return m;}
+     }
+ 
+ 
+@@ -2852,7 +3054,11 @@
+             if(ok==null)continue;
+ 
+             double teamVal,oppVal;
+-            if("goals".equals(q.module)){
++            if(isHalfCompareModule(q.module)){
++                double[] hv=halfComparisonValues(f,q.module);
++                if(hv==null)continue;
++                teamVal=hv[0];oppVal=hv[1];
++            }else if("goals".equals(q.module)){
+                 int[] sc=scoreForPeriod(f,q.period);
+                 int[] tf=teamScore(f,team,sc);
+                 if(tf==null)continue;
+@@ -2905,6 +3111,98 @@
+     int goalBttsCount(ArrayList<Fixture> fs,String p){int n=0;for(Fixture f:fs){int[] s=scoreForPeriod(f,p);if(s!=null&&s[0]>0&&s[1]>0)n++;}return n;}
+     int goalEvenCount(ArrayList<Fixture> fs,String p){int n=0;for(Fixture f:fs){int[] s=scoreForPeriod(f,p);if(s!=null&&(s[0]+s[1])%2==0)n++;}return n;}
+ 
++
++    void initLanguage(){
++        appLangMode=getSharedPreferences("bss_ui",MODE_PRIVATE).getString("language_mode","auto");
++        appLang="auto".equals(appLangMode)?supportedLanguage(Locale.getDefault().getLanguage()):supportedLanguage(appLangMode);
++    }
++    String supportedLanguage(String code){
++        if(code==null)return"en";code=code.toLowerCase(Locale.US);if("in".equals(code))code="id";
++        String[] ok={"ro","ru","en","de","it","es","pt","ar","tr","fr","uk","pl","el","bg","nl","cs","hr","sr","hu","da","sv","id","vi"};
++        for(String x:ok)if(x.equals(code))return x;return"en";
++    }
++    Locale localeForApp(){
