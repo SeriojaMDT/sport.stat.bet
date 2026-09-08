@@ -1,0 +1,16 @@
++    Button linkButton(String s){Button b=new Button(this);b.setAllCaps(false);b.setText(tr(s));b.setTextSize(11);b.setTextColor(BLUE);b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);b.setBackground(rounded(SOFT_BLUE,10));b.setStateListAnimator(null);return b;}
+     void addStat(LinearLayout c,String a,String b,int color){LinearLayout r=new LinearLayout(this);r.setGravity(Gravity.CENTER_VERTICAL);TextView l=text(a,12,MUTED,false);TextView v=text(b,12,color,true);v.setGravity(Gravity.END);r.addView(l,new LinearLayout.LayoutParams(0,d(28),1));r.addView(v,new LinearLayout.LayoutParams(0,d(28),1));c.addView(r);}
+     void addDivider(LinearLayout c){View v=new View(this);v.setBackgroundColor(LINE);c.addView(v,mt(5,d(1)));}
+     TableRow tableHeader(String[] vals,int[] widths){TableRow r=new TableRow(this);for(int i=0;i<vals.length;i++)r.addView(tableCell(vals[i],Color.WHITE,NAVY2,true,widths[i]));return r;}
+@@ -3315,6 +3627,11 @@
+         String category="",label="",type="",module="";int confidence;boolean over;double threshold=Double.NaN;
+     }
+ 
++    static class TopPredictionItem {
++        DailyMatchItem match;DailyPrediction prediction;
++        TopPredictionItem(DailyMatchItem m,DailyPrediction p){match=m;prediction=p;}
++    }
++
+     static class LeagueBundle {
+         LeagueSource source;
+         LeagueData data;
