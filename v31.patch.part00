@@ -1,0 +1,191 @@
+--- app/src/main/java/com/serghei/footballpredictions/MainActivity.java
++++ app/src/main/java/com/serghei/footballpredictions/MainActivity.java
+@@ -88,11 +88,25 @@
+     String dailySignature = "";
+     String dailyMessage = "";
+     final ArrayList<DailyMatchItem> dailyItems = new ArrayList<>();
++    final LinkedHashSet<String> dailyCollapsedGroups = new LinkedHashSet<>();
++
++    // Top predicții: aceleași date salvate, dar fiecare selecție este un pariu individual, ordonat după încredere.
++    String topSelectedDate = todayKey();
++    boolean topLoading = false;
++    String topSignature = "";
++    String topMessage = "";
++    final ArrayList<TopPredictionItem> topItems = new ArrayList<>();
++
++    // Limba: implicit urmează limba telefonului; alegerea manuală se păstrează.
++    String appLangMode = "auto";
++    String appLang = "ro";
++    TextView languageButton;
+ 
+     AlertDialog activeDialog = null;
+ 
+     @Override public void onCreate(Bundle b) {
+         super.onCreate(b);
++        initLanguage();
+         configureWindow();
+         setContentView(buildShell());
+         applySafeInsets(root);
+@@ -151,7 +165,7 @@
+ 
+         header = new LinearLayout(this);
+         header.setOrientation(LinearLayout.VERTICAL);
+-        header.setPadding(d(16),d(12),d(16),d(15));
++        header.setPadding(d(16),d(10),d(16),d(14));
+         GradientDrawable bg = new GradientDrawable(
+                 GradientDrawable.Orientation.TL_BR,
+                 new int[]{NAVY,NAVY2});
+@@ -160,9 +174,15 @@
+ 
+         LinearLayout top = new LinearLayout(this);
+         top.setGravity(Gravity.CENTER_VERTICAL);
+-        TextView brand = text("BESTSPORTSTATS",11,Color.rgb(125,211,252),true);
+-        brand.setLetterSpacing(.08f);
+-        top.addView(brand,new LinearLayout.LayoutParams(0,-2,1));
++
++        languageButton = text(currentLanguageFlag()+" ▾",18,Color.WHITE,true);
++        languageButton.setGravity(Gravity.CENTER);
++        languageButton.setPadding(d(5),0,d(5),0);
++        languageButton.setOnClickListener(v -> showLanguageDialog());
++        top.addView(languageButton,new LinearLayout.LayoutParams(d(58),d(38)));
++
++        Space spacer=new Space(this);
++        top.addView(spacer,new LinearLayout.LayoutParams(0,d(1),1));
+ 
+         TextView home = text("⌂",26,Color.WHITE,true);
+         home.setGravity(Gravity.CENTER);
+@@ -172,13 +192,15 @@
+ 
+         TextView refresh = text("↻",27,Color.WHITE,true);
+         refresh.setGravity(Gravity.CENTER);
+-        refresh.setOnClickListener(v -> loadIndex(true));
++        refresh.setOnClickListener(v -> { prepareManualRefresh(); loadIndex(true); });
+         top.addView(refresh,new LinearLayout.LayoutParams(d(42),d(38)));
+         header.addView(top);
+ 
+-        headerTitle = text("BestSportStats",25,Color.WHITE,true);
+-        header.addView(headerTitle,mt(3,-2));
+-        headerSubtitle = text("Statistica sezonului curent",12,Color.rgb(203,213,225),false);
++        headerTitle = text("BestSportStats",27,Color.WHITE,true);
++        headerTitle.setGravity(Gravity.CENTER_HORIZONTAL);
++        header.addView(headerTitle,mt(1,-2));
++        headerSubtitle = text("",12,Color.rgb(203,213,225),false);
++        headerSubtitle.setGravity(Gravity.CENTER_HORIZONTAL);
+         header.addView(headerSubtitle,mt(1,-2));
+         root.addView(header);
+ 
+@@ -201,6 +223,10 @@
+             dailySignature="";
+             dailyItems.clear();
+             dailyLoading=false;
++            dailyCollapsedGroups.clear();
++            topSignature="";
++            topItems.clear();
++            topLoading=false;
+         }
+         loading = true;
+         renderLoading(force ? "Actualizez INDEX-ul…" : "Încarc datele…");
+@@ -384,10 +410,10 @@
+         content.removeAllViews();
+ 
+         if(!config.appEnabled){
+-            setHeader("BestSportStats","Aplicație indisponibilă");
++            setHeader("BestSportStats","");
+             LinearLayout c=card();
+             TextView t=text(config.maintenanceMessage.isEmpty()
+-                    ?"Aplicația este momentan dezactivată din configurația online."
++                    ?"Aplicația este momentan indisponibilă."
+                     :config.maintenanceMessage,14,RED,true);
+             t.setGravity(Gravity.CENTER);
+             c.addView(t);
+@@ -399,31 +425,43 @@
+         if ("home".equals(screen)) renderHome();
+         else if ("stats".equals(screen)) renderStats();
+         else if ("series".equals(screen)) renderSeries();
+-        else renderDailyMatches();
++        else if ("daily".equals(screen)) renderDailyMatches();
++        else renderTopPredictions();
+         scroll.scrollTo(0,0);
+     }
+ 
+-    void setHeader(String t,String s) { headerTitle.setText(t); headerSubtitle.setText(s); }
++    void setHeader(String t,String sub) {
++        headerTitle.setText(tr(t));
++        headerSubtitle.setText(tr(sub));
++        boolean homeTitle="BestSportStats".equals(t);
++        headerTitle.setGravity(homeTitle?Gravity.CENTER_HORIZONTAL:Gravity.START);
++        headerTitle.setTextSize(homeTitle?29:25);
++        headerSubtitle.setGravity(homeTitle?Gravity.CENTER_HORIZONTAL:Gravity.START);
++        headerSubtitle.setVisibility(sub==null||sub.trim().isEmpty()?View.GONE:View.VISIBLE);
++    }
+ 
+     void renderHome() {
+-        setHeader("BestSportStats","Sezonul curent • date dinamice");
++        setHeader("BestSportStats","");
+         renderOnlineSummary();
+ 
+         LinearLayout c=card();
+-        c.addView(text("Alege compartimentul",18,TEXT,true));
+-        c.addView(text("Datele și ligile se actualizează din Blogger fără APK nou.",11,MUTED,false),mt(3,-2));
+ 
+-        Button stats=bigAction("▥  Statistica","Goluri, cornere, cartonașe și toate modulele disponibile",SOFT_BLUE,BLUE);
++        Button stats=bigAction("▥  Statistica","Goluri, cornere, cartonașe și toate modulele",SOFT_BLUE,BLUE);
+         stats.setOnClickListener(v->{screen="stats";render();});
+-        c.addView(stats,mt(12,d(78)));
++        c.addView(stats,mt(2,d(74)));
+ 
+         Button series=bigAction("↗  Serii","Găsește automat echipele cu serii active",SOFT_PURPLE,PURPLE);
+         series.setOnClickListener(v->{screen="series";render();});
+-        c.addView(series,mt(8,d(78)));
++        c.addView(series,mt(8,d(74)));
+ 
+-        Button daily=bigAction("◫  Meciurile zilei","Program, rezultate și predicții statistice pe zile",SOFT_GREEN,GREEN);
++        Button daily=bigAction("◫  Meciurile zilei","Program, rezultate și predicții statistice",SOFT_GREEN,GREEN);
+         daily.setOnClickListener(v->{screen="daily";if(dailySelectedDate==null||dailySelectedDate.isEmpty())dailySelectedDate=todayKey();render();});
+-        c.addView(daily,mt(8,d(78)));
++        c.addView(daily,mt(8,d(74)));
++
++        Button top=bigAction("★  Top predicții","Cele mai sigure selecții, ordonate după încredere",SOFT_AMBER,AMBER);
++        top.setOnClickListener(v->{screen="top";if(topSelectedDate==null||topSelectedDate.isEmpty())topSelectedDate=todayKey();render();});
++        c.addView(top,mt(8,d(74)));
++
+         content.addView(c,mt(8,-2));
+ 
+         if (config.maintenance && !config.maintenanceMessage.isEmpty()) {
+@@ -435,14 +473,13 @@
+     }
+ 
+     void renderOnlineSummary() {
+-        LinkedHashSet<String> countries=new LinkedHashSet<>();
+         int comps=0,finished=0;
+-        for(LeagueSource s:catalog){countries.add(s.country); comps++; finished+=Math.max(0,s.finishedFixtures);}
++        for(LeagueSource src:catalog){comps++; finished+=Math.max(0,src.finishedFixtures);}
+         LinearLayout c=compactCard();
+         LinearLayout row=new LinearLayout(this); row.setGravity(Gravity.CENTER_VERTICAL);
+         LinearLayout left=new LinearLayout(this); left.setOrientation(LinearLayout.VERTICAL);
+         left.addView(text("Date online",11,MUTED,true));
+-        sourceStatus=text(countries.size()+" țări • "+comps+" competiții • "+fmt(finished)+" meciuri FT",14,TEXT,true);
++        sourceStatus=text(comps+" "+tr("competiții")+" • "+fmt(finished)+" "+tr("meciuri"),14,TEXT,true);
+         left.addView(sourceStatus,mt(1,-2));
+         row.addView(left,new LinearLayout.LayoutParams(0,-2,1));
+         row.addView(chip("● LIVE",GREEN,SOFT_GREEN)); c.addView(row);
+@@ -451,7 +488,7 @@
+ 
+ 
+     void renderStats() {
+-        setHeader("Statistica","Sezon selectabil • date dinamice");
++        setHeader("Statistica","");
+         renderSelectors(true);
+         if (leagueData==null || selectedTeam.isEmpty()) return;
+         ensureSelectedModule();
+@@ -476,17 +513,15 @@
+     }
+ 
+     void renderDailyMatches(){
+-        setHeader("Meciurile zilei","Arhivă zilnică • fără cereri API suplimentare");
++        setHeader("Meciurile zilei","");
+         renderDailyDatePicker();
+         String sig=dailySelectedDate+"|"+catalog.size();
+-        if(!dailyLoading && !sig.equals(dailySignature)){
+-            startDailyLoad(sig);
+-        }
