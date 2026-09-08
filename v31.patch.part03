@@ -1,0 +1,118 @@
++        if(correct+wrong>0){addDivider(c);c.addView(text("Rezultatele predicțiilor pentru ziua selectată",13,TEXT,true),mt(7,-2));addStat(c,"Corecte",String.valueOf(correct),GREEN);addStat(c,"Greșite",String.valueOf(wrong),RED);addStat(c,"Acuratețe",pct(correct,correct+wrong),BLUE);c.addView(text("Rezultate pe tip de predicție",13,TEXT,true),mt(8,-2));for(Map.Entry<String,int[]> e:byCategory.entrySet()){int[] st=e.getValue();addStat(c,e.getKey(),st[0]+"/"+st[1]+" • "+pct(st[0],st[1]),st[0]*100>=st[1]*70?GREEN:st[0]*100>=st[1]*55?AMBER:RED);}}
++        content.addView(c,mt(7,-2));
++    }
++
++    LinearLayout topPredictionCard(TopPredictionItem it,int rank){
++        DailyMatchItem dm=it.match;DailyPrediction p=it.prediction;Fixture f=dm.fixture;
++        LinearLayout r=new LinearLayout(this);r.setOrientation(LinearLayout.VERTICAL);r.setPadding(d(9),d(8),d(9),d(8));r.setBackground(bordered(Color.WHITE,LINE,11));
++        LinearLayout first=new LinearLayout(this);first.setGravity(Gravity.CENTER_VERTICAL);TextView rk=chip("#"+rank,PURPLE,SOFT_PURPLE);first.addView(rk);TextView conf=text(p.confidence+"%",13,p.confidence>=80?GREEN:BLUE,true);conf.setGravity(Gravity.END);first.addView(conf,new LinearLayout.LayoutParams(0,-2,1));r.addView(first);
++        TextView lg=text(dm.source.country+" • "+dm.source.league,9,MUTED,true);r.addView(lg,mt(3,-2));
++        TextView teams=text(f.home.name+"  –  "+f.away.name,13,TEXT,true);teams.setGravity(Gravity.CENTER);r.addView(teams,mt(3,-2));
++        LinearLayout pick=new LinearLayout(this);pick.setGravity(Gravity.CENTER_VERTICAL);TextView cat=text(tr(p.category),10,MUTED,true);pick.addView(cat,new LinearLayout.LayoutParams(0,d(30),1));Boolean ok=evaluateDailyPrediction(dm,p);String mark=ok==null?translateMarketLabel(p.label):ok?"✓  "+translateMarketLabel(p.label):"✕  "+translateMarketLabel(p.label);TextView val=text(mark,11,ok==null?TEXT:ok?GREEN:RED,true);val.setGravity(Gravity.END);pick.addView(val,new LinearLayout.LayoutParams(0,d(30),1));r.addView(pick);
++        if(f.finished()&&f.score!=null&&f.score.ft!=null){TextView res=text(tr("Rezultat")+": "+score(f.score.ft),10,MUTED,true);res.setGravity(Gravity.CENTER);r.addView(res,mt(2,-2));}
++        r.setClickable(true);r.setOnClickListener(v->showMatchAnalysisDialog(f,dm.data));return r;
++    }
++
++    void prepareManualRefresh(){
++        if("daily".equals(screen)){dailySelectedDate=todayKey();dailySignature="";dailyCollapsedGroups.clear();}
++        else if("top".equals(screen)){topSelectedDate=todayKey();topSignature="";}
++        else if("series".equals(screen)){seriesModule="goals";seriesPeriod="FT";seriesRule="Under";seriesValueSide="Total";seriesThreshold=2.5;seriesScope="all";seriesMin=3;seriesGlobalSignature="";}
++    }
++
++    boolean isHalfCompareModule(String m){return "goals_halves".equals(m)||"corners_halves".equals(m)||"cards_halves".equals(m);}
++    double[] halfComparisonValues(Fixture f,String module){
++        if(f==null)return null;
++        if("goals_halves".equals(module)){
++            if(f.score==null||f.score.ht==null||f.score.sh==null)return null;
++            return new double[]{f.score.ht[0]+f.score.ht[1],f.score.sh[0]+f.score.sh[1]};
++        }
++        String base="corners_halves".equals(module)?"corners":"cards";Metric m=metricFor(base);if(m==null)return null;
++        double[] a=metricHomeAwayValues(f,m.key,"HT"),b=metricHomeAwayValues(f,m.key,"2HT");if(a==null||b==null)return null;
++        return new double[]{a[0]+a[1],b[0]+b[1]};
++    }
++    String formatHalfCompareValue(String module,double v){return Math.abs(v-Math.rint(v))<.001?String.valueOf((int)Math.round(v)):one(v);}
++
++    String translateMarketLabel(String label){
++        if(label==null)return"";String x=label;
++        if(x.startsWith("Peste "))return tr("Peste")+x.substring(5);
++        if(x.startsWith("Sub "))return tr("Sub")+x.substring(3);
++        if(x.startsWith("Șansă dublă "))return tr("Șansă dublă")+x.substring("Șansă dublă".length());
++        return tr(x);
++    }
++
+     String fixtureDayKey(Fixture f){if(f!=null&&f.date!=null&&f.date.length()>=10&&f.date.charAt(4)=='-'&&f.date.charAt(7)=='-')return f.date.substring(0,10);if(f!=null&&f.ts>0){SimpleDateFormat sdf=new SimpleDateFormat("yyyy-MM-dd",Locale.US);return sdf.format(new Date(f.ts*1000L));}return "";}
+     String fixtureTime(Fixture f){if(f==null||f.ts<=0)return "–";return new SimpleDateFormat("HH:mm",Locale.US).format(new Date(f.ts*1000L));}
+     static String todayKey(){return new SimpleDateFormat("yyyy-MM-dd",Locale.US).format(new Date());}
+     Calendar calendarFromKey(String key){Calendar c=Calendar.getInstance();try{Date d=new SimpleDateFormat("yyyy-MM-dd",Locale.US).parse(key);if(d!=null)c.setTime(d);}catch(Exception ignored){}return c;}
+     String keyFromCalendar(Calendar c){return new SimpleDateFormat("yyyy-MM-dd",Locale.US).format(c.getTime());}
+-    String displayFullDate(String key){try{Date d=new SimpleDateFormat("yyyy-MM-dd",Locale.US).parse(key);return new SimpleDateFormat("EEEE, dd.MM.yyyy",new Locale("ro","RO")).format(d);}catch(Exception e){return key;}}
++    String displayFullDate(String key){try{Date d=new SimpleDateFormat("yyyy-MM-dd",Locale.US).parse(key);return new SimpleDateFormat("EEEE, dd.MM.yyyy",localeForApp()).format(d);}catch(Exception e){return key;}}
+ 
+     void renderSeriesDatabaseScope(){
+         LinearLayout c=compactCard();
+@@ -1416,8 +1599,10 @@
+         LinearLayout c=compactCard();
+         c.addView(text("Filtru serii",16,TEXT,true));
+         c.addView(filterRow("Statistică",moduleLabel(seriesModule),v->chooseSeriesModule()),mt(7,-2));
+-        c.addView(filterRow("Perioadă",periodLabel(seriesPeriod),v->chooseSeriesPeriod()),mt(5,-2));
+-        if(!"goals".equals(seriesModule)) c.addView(filterRow("Valoare",seriesValueSide,v->chooseSeriesSide()),mt(5,-2));
++        if(!isHalfCompareModule(seriesModule)){
++            c.addView(filterRow("Perioadă",periodLabel(seriesPeriod),v->chooseSeriesPeriod()),mt(5,-2));
++            if(!"goals".equals(seriesModule)) c.addView(filterRow("Valoare",seriesValueSide,v->chooseSeriesSide()),mt(5,-2));
++        }
+         c.addView(filterRow("Tip",seriesRule,v->chooseSeriesRule()),mt(5,-2));
+         if(seriesUsesThreshold()) c.addView(filterRow("Prag",oneThreshold(seriesThreshold),v->chooseSeriesThreshold()),mt(5,-2));
+         c.addView(filterRow("Meciuri",scopeLabel(seriesScope),v->chooseSeriesScope()),mt(5,-2));
+@@ -1698,6 +1883,15 @@
+     }
+ 
+     Boolean seriesMatch(Fixture f,String team,SeriesQuery q){
++        if(isHalfCompareModule(q.module)){
++            double[] halves=halfComparisonValues(f,q.module);
++            if(halves==null)return null;
++            if("1H mai mult".equals(q.rule))return halves[0]>halves[1];
++            if("2H mai mult".equals(q.rule))return halves[1]>halves[0];
++            if("Egal".equals(q.rule))return Math.abs(halves[0]-halves[1])<.0001;
++            return null;
++        }
++
+         if("goals".equals(q.module)){
+             int[] score=scoreForPeriod(f,q.period);
+             if(score==null)return null;
+@@ -1878,6 +2072,9 @@
+     String seriesCriterionLabel(){return seriesCriterionLabel(currentSeriesQuery());}
+ 
+     String seriesCriterionLabel(SeriesQuery q){
++        if(isHalfCompareModule(q.module)){
++            return moduleLabel(q.module)+" • "+q.rule+" • "+scopeLabel(q.scope);
++        }
+         StringBuilder b=new StringBuilder();
+         b.append(moduleLabel(q.module)).append(" • ").append(periodLabel(q.period));
+         if(!"goals".equals(q.module))b.append(" • ").append(q.valueSide);
+@@ -1890,6 +2087,10 @@
+     String seriesDisplayScore(Fixture f,String team){return seriesDisplayScore(f,team,currentSeriesQuery());}
+ 
+     String seriesDisplayScore(Fixture f,String team,SeriesQuery q){
++        if(isHalfCompareModule(q.module)){
++            double[] h=halfComparisonValues(f,q.module);if(h==null)return"–";
++            return "1H "+formatHalfCompareValue(q.module,h[0])+" • 2H "+formatHalfCompareValue(q.module,h[1]);
++        }
+         if("goals".equals(q.module)){
+             int[] sc=scoreForPeriod(f,q.period);
+             return score(sc);
+@@ -2129,22 +2330,35 @@
+         showChoice("Statistică",labels,moduleLabel(seriesModule),lab->{
+             for(String m:mods)if(moduleLabel(m).equals(lab))seriesModule=m;
+             seriesPeriod="FT";
+-            seriesRule="goals".equals(seriesModule)?"Under":"Over";
+-            seriesThreshold=defaultSeriesThreshold(seriesModule,"FT");
++            if(isHalfCompareModule(seriesModule)){
++                seriesRule="2H mai mult";
++                seriesValueSide="Total";
++            }else{
++                seriesRule="goals".equals(seriesModule)?"Under":"Over";
++                seriesThreshold=defaultSeriesThreshold(seriesModule,"FT");
++            }
+             render();
+         });
+     }
