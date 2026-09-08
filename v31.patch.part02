@@ -1,0 +1,84 @@
++        ArrayList<DailyPrediction> ps=dailyPredictions(it);if(!ps.isEmpty()){LinearLayout predBox=new LinearLayout(this);predBox.setOrientation(LinearLayout.VERTICAL);predBox.setPadding(d(7),d(5),d(7),d(5));predBox.setBackground(rounded(Color.rgb(248,250,252),8));int shown=0;for(DailyPrediction p:ps){if(shown++>=4)break;LinearLayout pr=new LinearLayout(this);pr.setGravity(Gravity.CENTER_VERTICAL);TextView pl=text(tr(p.category)+": "+translateMarketLabel(p.label),9,TEXT,true);pr.addView(pl,new LinearLayout.LayoutParams(0,-2,1));Boolean ok=evaluateDailyPrediction(it,p);String mark=ok==null?p.confidence+"%":ok?"✓  "+p.confidence+"%":"✕  "+p.confidence+"%";TextView pm=text(mark,9,ok==null?BLUE:ok?GREEN:RED,true);pm.setGravity(Gravity.END);pr.addView(pm,new LinearLayout.LayoutParams(d(66),-2));predBox.addView(pr,mt(shown==1?0:2,-2));}r.addView(predBox,mt(5,-2));}
+         r.setClickable(true);r.setFocusable(true);r.setOnClickListener(v->showMatchAnalysisDialog(f,it.data));return r;
+     }
+ 
+     ArrayList<DailyPrediction> dailyPredictions(DailyMatchItem it){
+         ArrayList<DailyPrediction> out=new ArrayList<>();Fixture target=it.fixture;LeagueData data=it.data;if(target==null||data==null)return out;long before=target.ts>0?target.ts:Long.MAX_VALUE;
+         TeamSnapshot h=buildTeamSnapshot(data,target.home.name,"home",before),a=buildTeamSnapshot(data,target.away.name,"away",before);Map<String,TableEntry> table=buildTableBefore(data,before);FavoriteEstimate fav=estimateFavorite(target,h,a,table.get(target.home.name),table.get(target.away.name));
+-        if(fav.enough&&!fav.balanced){DailyPrediction p=new DailyPrediction();p.category="Safe";p.type=fav.team.equals(target.home.name)?"1X":"X2";p.label="Șansă dublă "+p.type;p.confidence=Math.max(58,fav.confidence-3);out.add(p);}
++        if(fav.enough&&!fav.balanced){DailyPrediction p=new DailyPrediction();p.category="Șansă dublă";p.type=fav.team.equals(target.home.name)?"1X":"X2";p.label=p.type;p.confidence=Math.max(58,fav.confidence-3);out.add(p);}
+         String[] mods={"goals","corners","cards","shots"};for(String m:mods){if(!"goals".equals(m)&&!data.modules.has(m))continue;MarketPrediction mp=marketPrediction(data,target,m,before);if(!mp.available)continue;DailyPrediction p=new DailyPrediction();p.category="goals".equals(m)?"Goluri":metricShortLabel(m);p.type="market";p.module=m;p.label=mp.label;p.confidence=mp.confidence;parseMarketPrediction(p);out.add(p);}
+         return out;
+     }
+@@ -586,12 +659,122 @@
+         return p.over?val>p.threshold:val<p.threshold;
+     }
+ 
++
++    void renderTopPredictions(){
++        setHeader("Top predicții","");
++        renderTopDatePicker();
++        String sig=topSelectedDate+"|"+catalog.size();
++        if(!topLoading&&!sig.equals(topSignature))startTopLoad(sig);
++        if(topLoading){
++            LinearLayout c=compactCard();
++            c.addView(text(tr("Pregătesc predicțiile pentru")+" "+displayFullDate(topSelectedDate),15,TEXT,true));
++            ProgressBar p=new ProgressBar(this);c.addView(p,mt(8,d(44)));
++            c.addView(text(topMessage.isEmpty()?tr("Pregătesc ligile…"):topMessage,11,MUTED,false),mt(5,-2));
++            content.addView(c,mt(7,-2));return;
++        }
++        renderTopList();
++    }
++
++    void renderTopDatePicker(){
++        LinearLayout c=compactCard();
++        LinearLayout title=new LinearLayout(this);title.setGravity(Gravity.CENTER_VERTICAL);
++        TextView t=text("Alege ziua",14,TEXT,true);title.addView(t,new LinearLayout.LayoutParams(0,-2,1));
++        Button cal=selectButton("Calendar ▾");cal.setOnClickListener(v->showTopCalendar());title.addView(cal,new LinearLayout.LayoutParams(d(110),d(36)));c.addView(title);
++        HorizontalScrollView hs=new HorizontalScrollView(this);hs.setHorizontalScrollBarEnabled(false);
++        LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);
++        Calendar center=calendarFromKey(topSelectedDate);final View[] selectedView=new View[1];
++        for(int off=-5;off<=5;off++){
++            Calendar x=(Calendar)center.clone();x.add(Calendar.DAY_OF_MONTH,off);String key=keyFromCalendar(x);boolean active=key.equals(topSelectedDate);
++            String day=key.equals(todayKey())?tr("Azi"):new SimpleDateFormat("EEE",localeForApp()).format(x.getTime());
++            Button b=smallTab(day+"\n"+new SimpleDateFormat("dd.MM",Locale.US).format(x.getTime()),active);b.setSingleLine(false);b.setGravity(Gravity.CENTER);b.setTextSize(active?11:10);
++            b.setOnClickListener(v->{topSelectedDate=key;topSignature="";render();});
++            LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(d(70),d(52));bp.rightMargin=d(5);row.addView(b,bp);if(active)selectedView[0]=b;
++        }
++        hs.addView(row);c.addView(hs,mt(7,d(54)));hs.post(()->{if(selectedView[0]!=null)hs.smoothScrollTo(Math.max(0,selectedView[0].getLeft()-d(125)),0);});content.addView(c);
++    }
++
++    void showTopCalendar(){
++        Calendar c=calendarFromKey(topSelectedDate);
++        DatePickerDialog dlg=new DatePickerDialog(this,(view,y,m,dv)->{Calendar x=Calendar.getInstance();x.set(y,m,dv,12,0,0);x.set(Calendar.MILLISECOND,0);topSelectedDate=keyFromCalendar(x);topSignature="";render();},c.get(Calendar.YEAR),c.get(Calendar.MONTH),c.get(Calendar.DAY_OF_MONTH));
++        dlg.show();
++    }
++
++    void startTopLoad(String signature){
++        topLoading=true;topMessage="Pregătesc ligile…";topItems.clear();
++        final String wanted=topSelectedDate;final ArrayList<LeagueSource> targets=new ArrayList<>(catalog);
++        executor.execute(()->{
++            ArrayList<TopPredictionItem> all=new ArrayList<>();HashSet<String> seen=new HashSet<>();
++            ExecutorService pool=Executors.newFixedThreadPool(4);ArrayList<Future<LeagueBundle>> futures=new ArrayList<>();
++            for(LeagueSource src:targets)futures.add(pool.submit(()->{LeagueData d=seriesLeagueCache.get(seriesCacheKey(src));if(d==null){d=fetchLeagueDataForSeries(src);if(d!=null)seriesLeagueCache.put(seriesCacheKey(src),d);}return new LeagueBundle(src,d);}));
++            int done=0;
++            for(Future<LeagueBundle> future:futures){
++                try{LeagueBundle b=future.get();if(b!=null&&b.data!=null){for(Fixture f:b.data.fixtures){if(f==null||!wanted.equals(fixtureDayKey(f)))continue;String k=f.id>0?"id:"+f.id:(b.source.leagueId+"|"+wanted+"|"+f.home.name+"|"+f.away.name);if(!seen.add(k))continue;DailyMatchItem dm=new DailyMatchItem(b.source,b.data,f);for(DailyPrediction dp:dailyPredictions(dm)){if(dp.confidence>=70)all.add(new TopPredictionItem(dm,dp));}}}}catch(Exception ignored){}
++                done++;final int fd=done;if(fd==targets.size()||fd%5==0)runOnUiThread(()->topMessage=tr("Verificate")+" "+fd+" / "+targets.size()+" "+tr("ligi")+"…");
++            }
++            pool.shutdownNow();
++            Collections.sort(all,(a,b)->{int x=Integer.compare(b.prediction.confidence,a.prediction.confidence);if(x!=0)return x;long at=a.match.fixture.ts,bt=b.match.fixture.ts;if(at>0&&bt>0){x=Long.compare(at,bt);if(x!=0)return x;}return a.match.fixture.home.name.compareToIgnoreCase(b.match.fixture.home.name);});
++            if(all.size()>60)all=new ArrayList<>(all.subList(0,60));
++            final ArrayList<TopPredictionItem> result=all;
++            runOnUiThread(()->{if(!"top".equals(screen)||!wanted.equals(topSelectedDate)){topLoading=false;topSignature="";return;}topItems.clear();topItems.addAll(result);topSignature=signature;topLoading=false;topMessage="";render();});
++        });
++    }
++
++    void renderTopList(){
++        LinearLayout c=compactCard();
++        LinearLayout dateRow=new LinearLayout(this);dateRow.setGravity(Gravity.CENTER_VERTICAL);
++        TextView date=text(displayFullDate(topSelectedDate),17,TEXT,true);dateRow.addView(date,new LinearLayout.LayoutParams(0,-2,1));
++        TextView count=text(topItems.size()+" "+tr("selecții"),12,MUTED,true);count.setGravity(Gravity.END);dateRow.addView(count,new LinearLayout.LayoutParams(d(110),-2));c.addView(dateRow);
++        if(topItems.isEmpty()){c.addView(text("Nu sunt predicții cu încredere de minimum 70% pentru această zi.",12,MUTED,false),mt(10,-2));content.addView(c,mt(7,-2));return;}
++        int correct=0,wrong=0;LinkedHashMap<String,int[]> byCategory=new LinkedHashMap<>();int rank=0;
++        for(TopPredictionItem it:topItems){rank++;c.addView(topPredictionCard(it,rank),mt(6,-2));Boolean ok=evaluateDailyPrediction(it.match,it.prediction);if(ok!=null){if(ok)correct++;else wrong++;int[] st=byCategory.get(it.prediction.category);if(st==null){st=new int[2];byCategory.put(it.prediction.category,st);}st[1]++;if(ok)st[0]++;}}
