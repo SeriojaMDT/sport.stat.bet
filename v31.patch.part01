@@ -1,0 +1,99 @@
++        if(!dailyLoading && !sig.equals(dailySignature)) startDailyLoad(sig);
+         if(dailyLoading){
+             LinearLayout c=compactCard();
+-            c.addView(text("Pregătesc meciurile pentru "+displayFullDate(dailySelectedDate),15,TEXT,true));
++            c.addView(text(tr("Pregătesc meciurile pentru")+" "+displayFullDate(dailySelectedDate),15,TEXT,true));
+             ProgressBar p=new ProgressBar(this);c.addView(p,mt(8,d(44)));
+-            c.addView(text(dailyMessage.isEmpty()?"Citesc arhiva Blogger…":dailyMessage,11,MUTED,false),mt(5,-2));
++            c.addView(text(dailyMessage.isEmpty()?tr("Pregătesc ligile…"):dailyMessage,11,MUTED,false),mt(5,-2));
+             content.addView(c,mt(7,-2));
+             return;
+         }
+@@ -504,13 +539,13 @@
+         Calendar center=calendarFromKey(dailySelectedDate);final View[] selectedView=new View[1];
+         for(int off=-5;off<=5;off++){
+             Calendar x=(Calendar)center.clone();x.add(Calendar.DAY_OF_MONTH,off);String key=keyFromCalendar(x);boolean active=key.equals(dailySelectedDate);
+-            String label=(key.equals(todayKey())?"Azi":""+new SimpleDateFormat("EEE",new Locale("ro","RO")).format(x.getTime()))+"\n"+new SimpleDateFormat("dd.MM",Locale.US).format(x.getTime());
+-            Button b=smallTab(label,active);b.setSingleLine(false);b.setGravity(Gravity.CENTER);b.setTextSize(active?11:10);b.setOnClickListener(v->{dailySelectedDate=key;dailySignature="";render();});
++            String day=key.equals(todayKey())?tr("Azi"):new SimpleDateFormat("EEE",localeForApp()).format(x.getTime());
++            String label=day+"\n"+new SimpleDateFormat("dd.MM",Locale.US).format(x.getTime());
++            Button b=smallTab(label,active);b.setSingleLine(false);b.setGravity(Gravity.CENTER);b.setTextSize(active?11:10);b.setOnClickListener(v->{dailySelectedDate=key;dailySignature="";dailyCollapsedGroups.clear();render();});
+             LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(d(70),d(52));bp.rightMargin=d(5);row.addView(b,bp);if(active)selectedView[0]=b;
+         }
+         hs.addView(row);c.addView(hs,mt(7,d(54)));
+         hs.post(()->{if(selectedView[0]!=null)hs.smoothScrollTo(Math.max(0,selectedView[0].getLeft()-d(125)),0);});
+-        TextView hint=text("← zile precedente   •   ziua selectată   •   zile viitoare →",9,MUTED,false);hint.setGravity(Gravity.CENTER);c.addView(hint,mt(3,-2));
+         content.addView(c);
+     }
+ 
+@@ -540,19 +575,57 @@
+ 
+     void renderDailyList(){
+         LinearLayout c=compactCard();
+-        c.addView(text(displayFullDate(dailySelectedDate),17,TEXT,true));
+-        c.addView(text(dailyItems.size()+" meciuri • țările și ligile sunt ordonate după prioritatea din CONFIG",10,MUTED,false),mt(2,-2));
++        LinearLayout dateRow=new LinearLayout(this);dateRow.setGravity(Gravity.CENTER_VERTICAL);
++        TextView date=text(displayFullDate(dailySelectedDate),17,TEXT,true);
++        dateRow.addView(date,new LinearLayout.LayoutParams(0,-2,1));
++        TextView count=text(dailyItems.size()+" "+tr("meciuri"),12,MUTED,true);count.setGravity(Gravity.END);
++        dateRow.addView(count,new LinearLayout.LayoutParams(d(110),-2));
++        c.addView(dateRow);
++
+         if(dailyItems.isEmpty()){
+-            c.addView(text("Nu există meciuri salvate pentru această zi în arhiva disponibilă.",12,MUTED,false),mt(10,-2));content.addView(c,mt(7,-2));return;
++            c.addView(text("Nu există meciuri salvate pentru această zi.",12,MUTED,false),mt(10,-2));content.addView(c,mt(7,-2));return;
+         }
+-        String group="";int correct=0,wrong=0;
++
++        String group="";LinearLayout groupBody=null;TextView groupHeader=null;
++        int correct=0,wrong=0;
++        LinkedHashMap<String,int[]> byCategory=new LinkedHashMap<>();
++
+         for(DailyMatchItem it:dailyItems){
+             String g=it.source.country+" • "+it.source.league;
+-            if(!g.equals(group)){TextView gh=text(g,12,NAVY2,true);gh.setPadding(d(7),d(7),d(7),d(5));gh.setBackground(rounded(SOFT_BLUE,8));c.addView(gh,mt(group.isEmpty()?8:10,-2));group=g;}
+-            LinearLayout match=dailyMatchCard(it);c.addView(match,mt(5,-2));
+-            for(DailyPrediction dp:dailyPredictions(it)){Boolean ok=evaluateDailyPrediction(it,dp);if(ok!=null){if(ok)correct++;else wrong++;}}
++            if(!g.equals(group)){
++                final String fg=g;
++                LinearLayout block=new LinearLayout(this);block.setOrientation(LinearLayout.VERTICAL);
++                TextView gh=text((dailyCollapsedGroups.contains(g)?"▸  ":"▾  ")+g,12,NAVY2,true);
++                gh.setPadding(d(7),d(8),d(7),d(7));gh.setBackground(rounded(SOFT_BLUE,8));
++                LinearLayout body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);
++                body.setVisibility(dailyCollapsedGroups.contains(g)?View.GONE:View.VISIBLE);
++                gh.setOnClickListener(v->{
++                    if(dailyCollapsedGroups.contains(fg))dailyCollapsedGroups.remove(fg);else dailyCollapsedGroups.add(fg);
++                    body.setVisibility(dailyCollapsedGroups.contains(fg)?View.GONE:View.VISIBLE);
++                    gh.setText((dailyCollapsedGroups.contains(fg)?"▸  ":"▾  ")+fg);
++                });
++                block.addView(gh);block.addView(body);
++                c.addView(block,mt(group.isEmpty()?8:10,-2));
++                group=g;groupBody=body;groupHeader=gh;
++            }
++            if(groupBody!=null)groupBody.addView(dailyMatchCard(it),mt(5,-2));
++            for(DailyPrediction dp:dailyPredictions(it)){
++                Boolean ok=evaluateDailyPrediction(it,dp);if(ok!=null){
++                    if(ok)correct++;else wrong++;
++                    int[] st=byCategory.get(dp.category);if(st==null){st=new int[2];byCategory.put(dp.category,st);}st[1]++;if(ok)st[0]++;
++                }
++            }
++        }
++
++        if(correct+wrong>0){
++            addDivider(c);c.addView(text("Rezultatele predicțiilor pentru ziua selectată",13,TEXT,true),mt(7,-2));
++            addStat(c,"Corecte",String.valueOf(correct),GREEN);addStat(c,"Greșite",String.valueOf(wrong),RED);addStat(c,"Acuratețe",pct(correct,correct+wrong),BLUE);
++            c.addView(text("Rezultate pe tip de predicție",13,TEXT,true),mt(8,-2));
++            for(Map.Entry<String,int[]> e:byCategory.entrySet()){
++                int[] st=e.getValue();
++                addStat(c,e.getKey(),st[0]+"/"+st[1]+" • "+pct(st[0],st[1]),st[0]*100>=st[1]*70?GREEN:st[0]*100>=st[1]*55?AMBER:RED);
++            }
+         }
+-        if(correct+wrong>0){addDivider(c);c.addView(text("Rezultatele predicțiilor pentru ziua selectată",13,TEXT,true),mt(7,-2));addStat(c,"Corecte",String.valueOf(correct),GREEN);addStat(c,"Greșite",String.valueOf(wrong),RED);addStat(c,"Acuratețe",pct(correct,correct+wrong),BLUE);}
+         content.addView(c,mt(7,-2));
+     }
+ 
+@@ -563,14 +636,14 @@
+         TextView teams=text(f.home.name+"  –  "+f.away.name,13,TEXT,true);teams.setGravity(Gravity.CENTER);top.addView(teams,new LinearLayout.LayoutParams(0,-2,1));
+         String res=(f.score!=null&&f.score.ft!=null)?score(f.score.ft):(f.finished()?"–":"");TextView rv=text(res,13,f.finished()?TEXT:MUTED,true);rv.setGravity(Gravity.END);top.addView(rv,new LinearLayout.LayoutParams(d(50),-2));r.addView(top);
+         String status=f.status==null||f.status.isEmpty()?(f.future()?"Programat":""):f.status;TextView st=text(status,9,MUTED,false);st.setGravity(Gravity.CENTER);r.addView(st,mt(2,-2));
+-        ArrayList<DailyPrediction> ps=dailyPredictions(it);if(!ps.isEmpty()){LinearLayout predBox=new LinearLayout(this);predBox.setOrientation(LinearLayout.VERTICAL);predBox.setPadding(d(7),d(5),d(7),d(5));predBox.setBackground(rounded(Color.rgb(248,250,252),8));int shown=0;for(DailyPrediction p:ps){if(shown++>=4)break;LinearLayout pr=new LinearLayout(this);pr.setGravity(Gravity.CENTER_VERTICAL);TextView pl=text(p.category+": "+p.label,9,TEXT,true);pr.addView(pl,new LinearLayout.LayoutParams(0,-2,1));Boolean ok=evaluateDailyPrediction(it,p);String mark=ok==null?p.confidence+"%":ok?"✓  "+p.confidence+"%":"✕  "+p.confidence+"%";TextView pm=text(mark,9,ok==null?BLUE:ok?GREEN:RED,true);pm.setGravity(Gravity.END);pr.addView(pm,new LinearLayout.LayoutParams(d(66),-2));predBox.addView(pr,mt(shown==1?0:2,-2));}r.addView(predBox,mt(5,-2));}
