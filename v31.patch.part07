@@ -1,0 +1,51 @@
++            case"Goluri, cornere, cartonașe și toate modulele":en="Goals, corners, cards and all modules";ru="Голы, угловые, карточки и все модули";de="Tore, Ecken, Karten und alle Module";it="Gol, corner, cartellini e tutti i moduli";es="Goles, córners, tarjetas y todos los módulos";pt="Gols, escanteios, cartões e todos os módulos";ar="الأهداف والركنيات والبطاقات وكل الوحدات";trk="Goller, kornerler, kartlar ve tüm modüller";fr="Buts, corners, cartons et tous les modules";uk="Голи, кутові, картки та всі модулі";break;
++            case"Găsește automat echipele cu serii active":en="Automatically find teams with active streaks";ru="Автоматически находит команды с активными сериями";de="Teams mit aktiven Serien automatisch finden";it="Trova automaticamente squadre con serie attive";es="Encuentra automáticamente equipos con rachas activas";pt="Encontra automaticamente equipas com séries ativas";ar="العثور تلقائياً على الفرق ذات السلاسل النشطة";trk="Aktif serileri olan takımları otomatik bul";fr="Trouve automatiquement les équipes avec des séries actives";uk="Автоматично знаходить команди з активними серіями";break;
++            case"Program, rezultate și predicții statistice":en="Schedule, results and statistical predictions";ru="Расписание, результаты и статистические прогнозы";de="Spielplan, Ergebnisse und statistische Prognosen";it="Calendario, risultati e pronostici statistici";es="Calendario, resultados y predicciones estadísticas";pt="Calendário, resultados e previsões estatísticas";ar="الجدول والنتائج والتوقعات الإحصائية";trk="Program, sonuçlar ve istatistiksel tahminler";fr="Programme, résultats et prédictions statistiques";uk="Розклад, результати та статистичні прогнози";break;
++            case"Cele mai sigure selecții, ordonate după încredere":en="Safest picks, ranked by confidence";ru="Самые надёжные варианты по уровню уверенности";de="Sicherste Tipps nach Konfidenz sortiert";it="Selezioni più sicure ordinate per affidabilità";es="Selecciones más seguras ordenadas por confianza";pt="Seleções mais seguras ordenadas por confiança";ar="أكثر الاختيارات أماناً مرتبة حسب الثقة";trk="Güvene göre sıralanmış en güvenli seçimler";fr="Sélections les plus sûres classées par confiance";uk="Найнадійніші варіанти за рівнем впевненості";break;
++        }
++        String v="en".equals(appLang)?en:"ru".equals(appLang)?ru:"de".equals(appLang)?de:"it".equals(appLang)?it:"es".equals(appLang)?es:"pt".equals(appLang)?pt:"ar".equals(appLang)?ar:"tr".equals(appLang)?trk:"fr".equals(appLang)?fr:"uk".equals(appLang)?uk:null;
++        if(v!=null)return v;
++        // Limbile suplimentare din selector folosesc engleza ca fallback pentru textele încă netraduse.
++        return en!=null?en:s;
++    }
++
+     void restoreSelection(){
+         LeagueSource src=catalog.isEmpty()?null:catalog.get(0);
+         if(src!=null){selectedCountry=src.country;selectedLeague=src.league;selectedSeason=src.season;}
+@@ -2921,20 +3219,34 @@
+     String readCache(LeagueSource s)throws Exception{try(FileInputStream in=openFileInput(cacheName(s))){return readAll(in);}}
+ 
+     void renderLoading(String msg){content.removeAllViews();LinearLayout c=card();ProgressBar p=new ProgressBar(this);c.addView(p,new LinearLayout.LayoutParams(-1,d(50)));TextView t=text(msg,13,MUTED,true);t.setGravity(Gravity.CENTER);c.addView(t,mt(7,-2));content.addView(c,mt(20,-2));}
+-    void renderError(String msg){content.removeAllViews();LinearLayout c=card();c.addView(text("Nu am putut încărca datele",17,RED,true));c.addView(text(msg==null?"Eroare necunoscută":msg,12,MUTED,false),mt(6,-2));Button b=linkButton("Încearcă din nou");b.setOnClickListener(v->loadIndex(true));c.addView(b,mt(8,d(42)));content.addView(c,mt(15,-2));}
++    void renderError(String msg){
++        content.removeAllViews();LinearLayout c=card();
++        c.addView(text("Nu există conexiune la date",17,RED,true));
++        c.addView(text("Verifică conexiunea la internet și încearcă din nou.",12,MUTED,false),mt(6,-2));
++        Button b=linkButton("Încearcă din nou");b.setOnClickListener(v->{prepareManualRefresh();loadIndex(true);});c.addView(b,mt(8,d(42)));content.addView(c,mt(15,-2));
++    }
+     void renderEmpty(String msg){LinearLayout c=compactCard();TextView t=text(msg,12,MUTED,false);t.setGravity(Gravity.CENTER);c.addView(t);content.addView(c,mt(7,-2));}
+ 
+     LinearLayout card(){LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(d(15),d(14),d(15),d(14));c.setBackground(rounded(Color.WHITE,18));c.setElevation(d(3));return c;}
+     LinearLayout compactCard(){LinearLayout c=card();c.setPadding(d(11),d(10),d(11),d(10));return c;}
+     GradientDrawable rounded(int color,int radius){GradientDrawable g=new GradientDrawable();g.setColor(color);g.setCornerRadius(d(radius));return g;}
+     GradientDrawable bordered(int color,int stroke,int radius){GradientDrawable g=rounded(color,radius);g.setStroke(d(1),stroke);return g;}
+-    TextView text(String s,int z,int color,boolean bold){TextView v=new TextView(this);v.setText(s);v.setTextSize(z);v.setTextColor(color);v.setLineSpacing(0,1.05f);if(bold)v.setTypeface(Typeface.DEFAULT,Typeface.BOLD);return v;}
+-    TextView chip(String s,int fg,int bg){TextView v=text(s,10,fg,true);v.setGravity(Gravity.CENTER);v.setPadding(d(9),d(5),d(9),d(5));v.setBackground(rounded(bg,20));return v;}
+-    Button bigAction(String title,String sub,int bg,int fg){Button b=new Button(this);b.setAllCaps(false);b.setText(title+"\n"+sub);b.setTextSize(15);b.setTextColor(fg);b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);b.setGravity(Gravity.CENTER_VERTICAL);b.setPadding(d(16),d(8),d(12),d(8));b.setBackground(rounded(bg,14));b.setStateListAnimator(null);return b;}
+-    Button selectButton(String s){Button b=new Button(this);b.setAllCaps(false);b.setText(s);b.setTextSize(10);b.setTextColor(TEXT);b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);b.setSingleLine(true);b.setEllipsize(TextUtils.TruncateAt.END);b.setPadding(d(5),0,d(5),0);b.setBackground(bordered(Color.WHITE,LINE,10));b.setStateListAnimator(null);return b;}
++    TextView text(String s,int z,int color,boolean bold){TextView v=new TextView(this);v.setText(tr(s));v.setTextSize(z);v.setTextColor(color);v.setLineSpacing(0,1.05f);if(bold)v.setTypeface(Typeface.DEFAULT,Typeface.BOLD);return v;}
++    TextView chip(String s,int fg,int bg){TextView v=text(tr(s),10,fg,true);v.setGravity(Gravity.CENTER);v.setPadding(d(9),d(5),d(9),d(5));v.setBackground(rounded(bg,20));return v;}
++    Button bigAction(String title,String sub,int bg,int fg){
++        Button b=new Button(this);b.setAllCaps(false);
++        String tt=tr(title),ss=tr(sub),all=tt+"\n"+ss;
++        SpannableString sp=new SpannableString(all);
++        sp.setSpan(new android.text.style.AbsoluteSizeSpan(18,true),0,tt.length(),Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
++        sp.setSpan(new android.text.style.StyleSpan(Typeface.BOLD),0,tt.length(),Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
++        sp.setSpan(new android.text.style.AbsoluteSizeSpan(10,true),tt.length()+1,all.length(),Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
++        b.setText(sp);b.setTextColor(fg);b.setGravity(Gravity.CENTER);b.setPadding(d(12),d(7),d(12),d(7));
++        b.setMaxLines(2);b.setBackground(rounded(bg,14));b.setStateListAnimator(null);return b;
++    }
++    Button selectButton(String s){Button b=new Button(this);b.setAllCaps(false);b.setText(tr(s));b.setTextSize(10);b.setTextColor(TEXT);b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);b.setSingleLine(true);b.setEllipsize(TextUtils.TruncateAt.END);b.setPadding(d(5),0,d(5),0);b.setBackground(bordered(Color.WHITE,LINE,10));b.setStateListAnimator(null);return b;}
+     Button smallTab(String s,boolean active){Button b=selectButton(s);b.setTextSize(11);b.setTextColor(active?Color.WHITE:MUTED);b.setBackground(rounded(active?BLUE:Color.WHITE,12));b.setPadding(d(13),0,d(13),0);return b;}
+     Button segment(String s,boolean active){Button b=selectButton(s);b.setTextSize(11);b.setTextColor(active?Color.WHITE:MUTED);b.setBackground(rounded(active?BLUE:Color.rgb(248,250,252),10));return b;}
+-    Button linkButton(String s){Button b=new Button(this);b.setAllCaps(false);b.setText(s);b.setTextSize(11);b.setTextColor(BLUE);b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);b.setBackground(rounded(SOFT_BLUE,10));b.setStateListAnimator(null);return b;}
