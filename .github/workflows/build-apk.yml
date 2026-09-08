@@ -1,4 +1,4 @@
-name: Build BestSportStats V3.0 APK
+name: Build BestSportStats V3.1 APK
 
 on:
   push:
@@ -48,10 +48,14 @@ jobs:
         run: |
           python -c "import base64,zlib; open('/tmp/v30.patch','wb').write(zlib.decompress(base64.b64decode(open('v30-patch.b64z').read())))"
           patch -p0 < /tmp/v30.patch
-      - name: Set V3.0 version
+      - name: Apply BestSportStats V3.1 patch
         run: |
-          sed -i "s/versionCode [0-9][0-9]*/versionCode 16/" app/build.gradle
-          sed -i "s/versionName '[^']*'/versionName '3.0-test'/" app/build.gradle
+          cat v31.patch.part00 v31.patch.part01 v31.patch.part02 v31.patch.part03 v31.patch.part04 v31.patch.part05 v31.patch.part06 v31.patch.part07 v31.patch.part08 > /tmp/v31.patch
+          patch -p0 < /tmp/v31.patch
+      - name: Set V3.1 version
+        run: |
+          sed -i "s/versionCode [0-9][0-9]*/versionCode 17/" app/build.gradle
+          sed -i "s/versionName '[^']*'/versionName '3.1-test'/" app/build.gradle
       - name: Java 17
         uses: actions/setup-java@v4
         with:
@@ -67,17 +71,17 @@ jobs:
           gradle-version: '8.10.2'
       - name: Build debug APK
         run: gradle :app:assembleDebug --stacktrace
-      - name: Upload V3.0 source
+      - name: Upload V3.1 source
         uses: actions/upload-artifact@v4
         with:
-          name: bestsportstats-v30-source
+          name: bestsportstats-v31-source
           path: app/src/main/java/com/serghei/footballpredictions/MainActivity.java
           if-no-files-found: error
-      - name: Upload V3.0 APK
+      - name: Upload V3.1 APK
         uses: actions/upload-artifact@v4
         with:
-          name: bestsportstats-v30-apk
+          name: bestsportstats-v31-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
-# Build V3.0 selected team highlight
+# Build V3.1 requested UI, top predictions, daily stats, series halves and languages
