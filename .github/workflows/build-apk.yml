@@ -1,4 +1,4 @@
-name: Build BestSportStats V3.3 APK
+name: Build BestSportStats V3.4 APK
 
 on:
   push:
@@ -60,10 +60,14 @@ jobs:
         run: |
           python -c "import base64,zlib; open('/tmp/v33.patch','wb').write(zlib.decompress(base64.b64decode(open('v33-patch.b64z').read())))"
           patch -p0 < /tmp/v33.patch
-      - name: Set V3.3 version
+      - name: Apply BestSportStats V3.4 archive-aware patch
         run: |
-          sed -i "s/versionCode [0-9][0-9]*/versionCode 19/" app/build.gradle
-          sed -i "s/versionName '[^']*'/versionName '3.3-test'/" app/build.gradle
+          python -c "import base64,zlib; open('/tmp/v34.patch','wb').write(zlib.decompress(base64.b64decode(open('v34-patch.b64z').read())))"
+          patch -p0 < /tmp/v34.patch
+      - name: Set V3.4 version
+        run: |
+          sed -i "s/versionCode [0-9][0-9]*/versionCode 20/" app/build.gradle
+          sed -i "s/versionName '[^']*'/versionName '3.4-test'/" app/build.gradle
       - name: Java 17
         uses: actions/setup-java@v4
         with:
@@ -79,17 +83,17 @@ jobs:
           gradle-version: '8.10.2'
       - name: Build debug APK
         run: gradle :app:assembleDebug --stacktrace
-      - name: Upload V3.3 source
+      - name: Upload V3.4 source
         uses: actions/upload-artifact@v4
         with:
-          name: bestsportstats-v33-source
+          name: bestsportstats-v34-source
           path: app/src/main/java/com/serghei/footballpredictions/MainActivity.java
           if-no-files-found: error
-      - name: Upload V3.3 APK
+      - name: Upload V3.4 APK
         uses: actions/upload-artifact@v4
         with:
-          name: bestsportstats-v33-apk
+          name: bestsportstats-v34-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
-# V3.3 restores true phone-language auto mode and completes the Russian/German translation audit, including dropdown values.
+# V3.4 keeps live predictions/current screens on the latest season when archive seasons are added, while Statistics can still select archive seasons. It also fixes remaining translated dropdown values and streak titles.
