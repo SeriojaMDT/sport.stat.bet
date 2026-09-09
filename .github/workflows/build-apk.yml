@@ -68,7 +68,8 @@ jobs:
           patch -p0 < /tmp/v34.patch
       - name: Apply BestSportStats V3.5 filters and express tickets patch
         run: |
-          python -c "import base64,zlib; open('/tmp/v35.patch','wb').write(zlib.decompress(base64.b64decode(open('v35-patch.b64z').read())))"
+          cat v35-patch.b64z.part1 v35-patch.b64z.part2 v35-patch.b64z.part3 v35-patch.b64z.part4 > /tmp/v35.b64
+          python -c "import base64,zlib; open('/tmp/v35.patch','wb').write(zlib.decompress(base64.b64decode(open('/tmp/v35.b64').read())))"
           patch -p0 < /tmp/v35.patch
       - name: Set V3.5 version
         run: |
