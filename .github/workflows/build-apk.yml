@@ -63,6 +63,8 @@ jobs:
       - name: Apply BestSportStats V3.4 archive-aware patch
         run: |
           python -c "import base64,zlib; open('/tmp/v34.patch','wb').write(zlib.decompress(base64.b64decode(open('v34-patch.b64z').read())))"
+          sed -i '1c--- app/src/main/java/com/serghei/footballpredictions/MainActivity.java' /tmp/v34.patch
+          sed -i '2c+++ app/src/main/java/com/serghei/footballpredictions/MainActivity.java' /tmp/v34.patch
           patch -p0 < /tmp/v34.patch
       - name: Set V3.4 version
         run: |
