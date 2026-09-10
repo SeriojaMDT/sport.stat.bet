@@ -1,4 +1,4 @@
-name: Build BestSportStats V3.7 APK
+name: Build BestSportStats V3.8 APK
 
 on:
   push:
@@ -80,10 +80,14 @@ jobs:
           cat v37-patch.b64z.part1 v37-patch.b64z.part2 v37-patch.b64z.part3 v37-patch.b64z.part4 > /tmp/v37.b64
           python -c "import base64,zlib; open('/tmp/v37.patch','wb').write(zlib.decompress(base64.b64decode(open('/tmp/v37.b64').read())))"
           patch -p0 < /tmp/v37.patch
-      - name: Set V3.7 version
+      - name: Apply BestSportStats V3.8 tickets live status and status-bar patch
         run: |
-          sed -i "s/versionCode [0-9][0-9]*/versionCode 23/" app/build.gradle
-          sed -i "s/versionName '[^']*'/versionName '3.7-test'/" app/build.gradle
+          python -c "import base64,zlib; open('/tmp/v38.patch','wb').write(zlib.decompress(base64.b64decode(open('v38-patch.b64z').read())))"
+          patch -p0 < /tmp/v38.patch
+      - name: Set V3.8 version
+        run: |
+          sed -i "s/versionCode [0-9][0-9]*/versionCode 24/" app/build.gradle
+          sed -i "s/versionName '[^']*'/versionName '3.8-test'/" app/build.gradle
       - name: Java 17
         uses: actions/setup-java@v4
         with:
@@ -99,19 +103,20 @@ jobs:
           gradle-version: '8.10.2'
       - name: Build debug APK
         run: gradle :app:assembleDebug --stacktrace
-      - name: Upload V3.7 source
+      - name: Upload V3.8 source
         uses: actions/upload-artifact@v4
         with:
-          name: bestsportstats-v37-source
+          name: bestsportstats-v38-source
           path: app/src/main/java/com/serghei/footballpredictions/MainActivity.java
           if-no-files-found: error
-      - name: Upload V3.7 APK
+      - name: Upload V3.8 APK
         uses: actions/upload-artifact@v4
         with:
-          name: bestsportstats-v37-apk
+          name: bestsportstats-v38-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
-# V3.7 preserves the current prediction formula. It compacts the header into one row,
-# adds percentage sorting, resets display filters on date/refresh, uses phone-local fixture times,
-# filters fixtures by timestamp-local day, and shows bet-specific results plus finished-match statistics.
+# V3.8 keeps the V3.7 prediction formula unchanged. It makes status-bar information visible,
+# compacts Daily/Top cards with larger text, adds LIVE/result-pending badges, strengthens phone-local time,
+# changes Express ticket allocation to unique picks with dynamic Safe/Balanced, one long Express and one Over-2.5 Lucky,
+# and persists settled ticket results for all-time ticket statistics.
