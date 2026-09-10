@@ -91,7 +91,6 @@ jobs:
               'val info = withContext(Dispatchers.IO) { PakHeaderInspector.inspect(local) }\n                    sourceFile = local\n                    inspection = info\n                    val idx =',
               1
           )
-          # Do not overwrite the same state later; harmless duplicates are removed.
           s = s.replace('                    sourceFile = local\n                    inspection = info\n                    indexValidation = idx', '                    indexValidation = idx', 1)
 
           simple = {
@@ -106,7 +105,6 @@ jobs:
               'HUD preview': 'Previzualizare HUD',
               'Build & Validate PAK': 'Construiește și verifică PAK',
               'Save PAK to phone': 'Salvează PAK în telefon',
-              'Build': '3. Construiește',
               'Output ready': 'Fișier gata',
               'Open failed': 'Deschiderea a eșuat',
               'PAK ready': 'PAK pregătit',
@@ -114,12 +112,13 @@ jobs:
           for a,b in simple.items():
               s = s.replace(a,b)
 
-          # Add a visible first step once.
+          # Translate only the visible heading, never identifiers such as canBuild.
+          s = s.replace('Text("Build", style = MaterialTheme.typography.titleLarge)', 'Text("3. Construiește", style = MaterialTheme.typography.titleLarge)', 1)
+
           marker = 'Text("Editor offline v4.6", style = MaterialTheme.typography.bodyMedium)'
           if marker in s and '1. Alege fișierul .pak' not in s:
               s = s.replace(marker, marker + '\n\n        Text("1. Alege fișierul .pak", style = MaterialTheme.typography.titleMedium)', 1)
 
-          # Hide developer-only JSON and the old footer sentence from the normal test UI.
           s = re.sub(
               r'\n\s*HorizontalDivider\(\)\s*\n\s*Text\("Profile JSON".*?\n\s*Text\(profile\.toJson\(\).*?\n\s*Text\("This editor does not include anti-cheat bypass or detection-evasion features\.".*?\n',
               '\n        HorizontalDivider()\n        Text("Cum îl folosești", style = MaterialTheme.typography.titleMedium)\n        Text("Deschide PAK → alege profilul → construiește → salvează.", style = MaterialTheme.typography.bodySmall)\n',
