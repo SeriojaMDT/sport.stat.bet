@@ -16,6 +16,204 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Apply v0.2.1 Android compatibility and UI patch
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          root = Path('pak-editor-build')
+
+          # Android OpenSSL compatibility: decrypt AES with NoPadding and strip PKCS#7 ourselves.
+          p = root / 'app/src/main/java/com/pakvisualeditor/core/PakV14HeaderDecoder.kt'
+          s = p.read_text()
+          old = '''        val decoded = if (h.encryptedIndex) {
+              val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+              cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(aesKey, "AES"), IvParameterSpec(aesIv))
+              cipher.doFinal(encryptedBytes)
+          } else encryptedBytes
+          '''
+          new = '''        val decoded = if (h.encryptedIndex) decryptIndex(encryptedBytes) else encryptedBytes
+          '''
+          if old not in s:
+              raise SystemExit('Header decoder patch anchor not found')
+          s = s.replace(old, new)
+          anchor = '\n    private fun u32le(data: ByteArray, offset: Int): Long ='
+          helper = '''
+              private fun decryptIndex(enc: ByteArray): ByteArray {
+                  require(enc.isNotEmpty() && enc.size % 16 == 0) { "Encrypted index size is not AES aligned" }
+                  val cipher = Cipher.getInstance("AES/CBC/NoPadding")
+                  cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(aesKey, "AES"), IvParameterSpec(aesIv))
+                  val padded = cipher.doFinal(enc)
+                  val pad = padded.last().toInt() and 0xFF
+                  require(pad in 1..16 && pad <= padded.size && padded.takeLast(pad).all { (it.toInt() and 0xFF) == pad }) {
+                      "Index decrypted, but PKCS#7 padding is invalid"
+                  }
+                  return padded.copyOf(padded.size - pad)
+              }
+          '''
+          if anchor not in s:
+              raise SystemExit('Header helper anchor not found')
+          s = s.replace(anchor, helper + anchor)
+          p.write_text(s)
+
+          # Use the same deterministic AES handling for full parse and rebuild.
+          p = root / 'app/src/main/java/com/pakvisualeditor/core/PakV14Archive.kt'
+          s = p.read_text()
+          old = '''    private fun decryptIndex(enc:ByteArray):ByteArray { val c=Cipher.getInstance("AES/CBC/PKCS5Padding"); c.init(Cipher.DECRYPT_MODE,SecretKeySpec(aesKey,"AES"),IvParameterSpec(aesIv)); return c.doFinal(enc) }
+              private fun encryptIndex(plain:ByteArray):ByteArray { val c=Cipher.getInstance("AES/CBC/PKCS5Padding"); c.init(Cipher.ENCRYPT_MODE,SecretKeySpec(aesKey,"AES"),IvParameterSpec(aesIv)); return c.doFinal(plain) }
+          '''
+          new = '''    private fun decryptIndex(enc:ByteArray):ByteArray {
+                  require(enc.isNotEmpty() && enc.size % 16 == 0) { "Encrypted index size is not AES aligned" }
+                  val c=Cipher.getInstance("AES/CBC/NoPadding")
+                  c.init(Cipher.DECRYPT_MODE,SecretKeySpec(aesKey,"AES"),IvParameterSpec(aesIv))
+                  val padded=c.doFinal(enc)
+                  val pad=padded.last().toInt() and 0xFF
+                  require(pad in 1..16 && pad<=padded.size && padded.takeLast(pad).all{(it.toInt() and 0xFF)==pad}) { "Index decrypted, but PKCS#7 padding is invalid" }
+                  return padded.copyOf(padded.size-pad)
+              }
+              private fun encryptIndex(plain:ByteArray):ByteArray {
+                  val pad=16-(plain.size%16)
+                  val padded=plain.copyOf(plain.size+pad)
+                  for(i in plain.size until padded.size) padded[i]=pad.toByte()
+                  val c=Cipher.getInstance("AES/CBC/NoPadding")
+                  c.init(Cipher.ENCRYPT_MODE,SecretKeySpec(aesKey,"AES"),IvParameterSpec(aesIv))
+                  return c.doFinal(padded)
+              }
+          '''
+          if old not in s:
+              raise SystemExit('Archive crypto patch anchor not found')
+          s = s.replace(old, new)
+          p.write_text(s)
+
+          # Keep the newly selected file visible even when later validation fails, and simplify UI.
+          p = root / 'app/src/main/java/com/pakvisualeditor/MainActivity.kt'
+          s = p.read_text()
+          old = '''                runCatching {
+                      val local = withContext(Dispatchers.IO) { copyUriToCache(uri) }
+                      progress = 20
+                      status = "Inspecting header…"
+                      val info = withContext(Dispatchers.IO) { PakHeaderInspector.inspect(local) }
+                      val idx = if (info.isSupportedProfile) withContext(Dispatchers.IO) {
+                          PakV14HeaderDecoder.decryptAndValidateIndex(local)
+                      } else null
+                      progress = 55
+                      status = "Validating archive…"
+                      val validation = if (info.isSupportedProfile) withContext(Dispatchers.IO) {
+                          PakV14Archive.validate(local)
+                      } else null
+                      sourceFile = local
+                      inspection = info
+                      indexValidation = idx
+                      archiveValidation = validation
+                      progress = 100
+                      status = if (validation?.valid == true) "PAK ready" else info.summary
+                  }.onFailure {
+                      error = it.message ?: it.toString()
+                      status = "Open failed"
+                  }
+          '''
+          new = '''                runCatching {
+                      val local = withContext(Dispatchers.IO) { copyUriToCache(uri) }
+                      sourceFile = local
+                      indexValidation = null
+                      archiveValidation = null
+                      progress = 20
+                      status = "Verific fișierul…"
+                      val info = withContext(Dispatchers.IO) { PakHeaderInspector.inspect(local) }
+                      inspection = info
+                      if (!info.isSupportedProfile) {
+                          progress = 100
+                          status = "Fișierul ales nu este un PAK v14 compatibil"
+                          return@runCatching
+                      }
+                      progress = 40
+                      status = "Verific indexul…"
+                      val idx = withContext(Dispatchers.IO) { PakV14HeaderDecoder.decryptAndValidateIndex(local) }
+                      indexValidation = idx
+                      require(idx.sha1Matches) { "Indexul PAK nu corespunde profilului v4.6" }
+                      progress = 65
+                      status = "Verific toate fișierele din PAK…"
+                      val validation = withContext(Dispatchers.IO) { PakV14Archive.validate(local) }
+                      archiveValidation = validation
+                      require(validation.valid) { validation.message }
+                      progress = 100
+                      status = "PAK pregătit — poți alege profilul și construi"
+                  }.onFailure {
+                      error = "Nu am putut deschide acest PAK cu profilul v4.6: ${it.message ?: it.javaClass.simpleName}"
+                      status = "Deschiderea a eșuat"
+                  }
+          '''
+          if old not in s:
+              raise SystemExit('Open-flow patch anchor not found')
+          s = s.replace(old, new)
+
+          replacements = {
+              'var status by remember { mutableStateOf("Open a PAK to begin") }': 'var status by remember { mutableStateOf("Apasă Deschide PAK și alege fișierul .pak") }',
+              'Text("Offline v4.6 test editor", style = MaterialTheme.typography.bodyMedium)': 'Text("Editor offline v4.6", style = MaterialTheme.typography.bodyMedium)',
+              'Text("Open PAK")': 'Text("Deschide PAK")',
+              'Text("Visual profile", style = MaterialTheme.typography.titleLarge)': 'Text("2. Alege profilul", style = MaterialTheme.typography.titleLarge)',
+              'title = "Keep source"': 'title = "Păstrează sursa"',
+              'description = "Do not replace the protected CharacterBase; only byte-safe plain-text edits are applied."': 'description = "Păstrează conținutul principal și aplică doar modificări simple de text."',
+              'title = "English — original layout"': 'title = "Engleză — aspect original"',
+              'description = "Uses the tested English menu while keeping the original overlay layout."': 'description = "Folosește meniul englezesc testat și pozițiile originale."',
+              'title = "English — clean + raised HUD"': 'title = "Engleză — curat + HUD ridicat"',
+              'description = "Tested profile: English menu, visible Renji/TG branding removed, original AddDebugText renderer, Alive/Players/Bots raised."': 'description = "Profilul testat de tine: meniu englezesc, branding vizibil neutralizat și Alive/Players/Bots ridicate."',
+              'Text("Neutralize auxiliary branding")': 'Text("Neutralizează brandingul auxiliar")',
+              'Text("Replaces known auxiliary credit strings with dots without changing byte length.", style = MaterialTheme.typography.bodySmall)': 'Text("Înlocuiește textele auxiliare cunoscute fără să schimbe lungimea fișierului.", style = MaterialTheme.typography.bodySmall)',
+              'Text("HUD preview", fontWeight = FontWeight.SemiBold)': 'Text("Previzualizare HUD", fontWeight = FontWeight.SemiBold)',
+              'Text("Tested Z values: Alive 211 • Players/Bots 219", style = MaterialTheme.typography.bodySmall)': 'Text("Poziție testată: Alive 211 • Players/Bots 219", style = MaterialTheme.typography.bodySmall)',
+              'Text("Original Z values: Alive 28 • Players/Bots 36", style = MaterialTheme.typography.bodySmall)': 'Text("Poziție originală: Alive 28 • Players/Bots 36", style = MaterialTheme.typography.bodySmall)',
+              'Text("Advanced plain-text patches", style = MaterialTheme.typography.titleMedium)': 'Text("Modificări text avansate", style = MaterialTheme.typography.titleMedium)',
+              'Text(if (showAdvanced) "Hide" else "Show")': 'Text(if (showAdvanced) "Ascunde" else "Arată")',
+              'Text("Replacement must have exactly the same UTF-8 byte length. This is useful for plain text; protected menu strings use the tested presets above.", style = MaterialTheme.typography.bodySmall)': 'Text("Folosește această secțiune doar dacă vrei să înlocuiești texte cu aceeași lungime în bytes.", style = MaterialTheme.typography.bodySmall)',
+              'Text("Build", style = MaterialTheme.typography.titleLarge)': 'Text("3. Construiește", style = MaterialTheme.typography.titleLarge)',
+              'status = "Preparing build…"': 'status = "Pregătesc PAK-ul…"',
+              'status = "Build & validation complete"': 'status = "PAK construit și verificat"',
+              'status = "Build failed"': 'status = "Construirea a eșuat"',
+              'Text(if (building) "Building…" else "Build & Validate PAK")': 'Text(if (building) "Construiesc…" else "Construiește și verifică PAK")',
+              'Text("Output ready", fontWeight = FontWeight.SemiBold)': 'Text("Fișier gata", fontWeight = FontWeight.SemiBold)',
+              'Text("Save PAK to phone")': 'Text("4. Salvează PAK în telefon")',
+              'Text("Function reference", style = MaterialTheme.typography.titleLarge)': 'Text("Lista funcțiilor", style = MaterialTheme.typography.titleLarge)',
+              'Text(if (showFunctions) "Hide" else "Show")': 'Text(if (showFunctions) "Ascunde" else "Arată")',
+              'saveMessage = "Saved successfully"': 'saveMessage = "Salvat cu succes"',
+          }
+          for a, b in replacements.items():
+              s = s.replace(a, b)
+
+          needle = '''        Text("Editor offline v4.6", style = MaterialTheme.typography.bodyMedium)
+          
+              Button(onClick = { openLauncher.launch(arrayOf("application/octet-stream", "*/*")) }, enabled = !building) {
+          '''
+          replacement = '''        Text("Editor offline v4.6", style = MaterialTheme.typography.bodyMedium)
+              Text("1. Alege fișierul .pak", style = MaterialTheme.typography.titleMedium)
+          
+              Button(onClick = { openLauncher.launch(arrayOf("application/octet-stream", "*/*")) }, enabled = !building) {
+          '''
+          if needle not in s:
+              raise SystemExit('Step-1 UI anchor not found')
+          s = s.replace(needle, replacement)
+
+          old = '''        HorizontalDivider()
+              Text("Profile JSON", style = MaterialTheme.typography.titleMedium)
+              Text(profile.toJson(), style = MaterialTheme.typography.bodySmall)
+              Text("This editor does not include anti-cheat bypass or detection-evasion features.", style = MaterialTheme.typography.bodySmall)
+              Spacer(Modifier.height(12.dp))
+          '''
+          new = '''        HorizontalDivider()
+              Text("Cum îl folosești", style = MaterialTheme.typography.titleMedium)
+              Text("Deschide PAK → alege profilul → construiește → salvează. Pentru primul test lasă selectat «Engleză — curat + HUD ridicat».", style = MaterialTheme.typography.bodySmall)
+              Spacer(Modifier.height(12.dp))
+          '''
+          if old not in s:
+              raise SystemExit('Footer UI patch anchor not found')
+          s = s.replace(old, new)
+          p.write_text(s)
+
+          p = root / 'app/build.gradle.kts'
+          s = p.read_text().replace('versionCode = 2', 'versionCode = 3').replace('versionName = "0.2.0-test"', 'versionName = "0.2.1-test"')
+          p.write_text(s)
+          PY
+
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
@@ -50,6 +248,6 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pak-editor-build-output
+          name: pak-editor-build-output-v021
           path: packaged/
           if-no-files-found: error
