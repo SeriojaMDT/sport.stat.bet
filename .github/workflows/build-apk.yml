@@ -77,7 +77,8 @@ jobs:
           patch -p0 < /tmp/v36.patch
       - name: Apply BestSportStats V3.7 UI timezone and match-results patch
         run: |
-          python -c "import base64,zlib; open('/tmp/v37.patch','wb').write(zlib.decompress(base64.b64decode(open('v37-patch.b64z').read())))"
+          cat v37-patch.b64z.part1 v37-patch.b64z.part2 v37-patch.b64z.part3 v37-patch.b64z.part4 > /tmp/v37.b64
+          python -c "import base64,zlib; open('/tmp/v37.patch','wb').write(zlib.decompress(base64.b64decode(open('/tmp/v37.b64').read())))"
           patch -p0 < /tmp/v37.patch
       - name: Set V3.7 version
         run: |
