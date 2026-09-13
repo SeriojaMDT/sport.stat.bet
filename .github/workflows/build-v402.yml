@@ -1,0 +1,135 @@
+name: Build Football Stats Analyzer V4.0.2 APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-v402:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Apply BestSportStats V2.2 source
+        run: python tools/apply_v21_source.py
+      - name: Apply BestSportStats V2.3 patch
+        run: python -c "import base64,zlib; exec(zlib.decompress(base64.b64decode(open('v23-patch.b64z').read())))"
+      - name: Apply BestSportStats V2.4 patch
+        run: |
+          python -c "import base64,zlib; open('/tmp/v24.patch','wb').write(zlib.decompress(base64.b64decode(open('v24-patch.b64z').read())))"
+          patch -p0 < /tmp/v24.patch
+      - name: Apply BestSportStats V2.5 patch
+        run: |
+          python -c "import base64,zlib; open('/tmp/v25.patch','wb').write(zlib.decompress(base64.b64decode(open('v25-patch.b64z').read())))"
+          patch -p0 < /tmp/v25.patch
+      - name: Apply BestSportStats V2.6 patch
+        run: |
+          python -c "import base64,zlib; open('/tmp/v26.patch','wb').write(zlib.decompress(base64.b64decode(open('v26-patch.b64z').read())))"
+          patch -p0 < /tmp/v26.patch
+      - name: Apply BestSportStats V2.7 patch
+        run: |
+          python -c "import base64,zlib; open('/tmp/v27.patch','wb').write(zlib.decompress(base64.b64decode(open('v27-patch.b64z').read())))"
+          patch -p0 < /tmp/v27.patch
+      - name: Apply BestSportStats V2.8 patch
+        run: |
+          cat v28-patch.b64z.part1 v28-patch.b64z.part2 v28-patch.b64z.part3 v28-patch.b64z.part4 v28-patch.b64z.part5 v28-patch.b64z.part6 v28-patch.b64z.part7 > /tmp/v28.b64
+          python -c "import base64,zlib; open('/tmp/v28.patch','wb').write(zlib.decompress(base64.b64decode(open('/tmp/v28.b64').read())))"
+          patch -p0 < /tmp/v28.patch
+      - name: Apply BestSportStats V2.9 patch
+        run: |
+          cat v29-patch.b64z.part1 v29-patch.b64z.part2 v29-patch.b64z.part3 > /tmp/v29.b64
+          python -c "import base64,zlib; open('/tmp/v29.patch','wb').write(zlib.decompress(base64.b64decode(open('/tmp/v29.b64').read())))"
+          sed -i '1c--- app/src/main/java/com/serghei/footballpredictions/MainActivity.java' /tmp/v29.patch
+          sed -i '2c+++ app/src/main/java/com/serghei/footballpredictions/MainActivity.java' /tmp/v29.patch
+          patch -p0 < /tmp/v29.patch
+          sed -i 's/if("goals".equals(module))return half?.35:.60;/if("goals".equals(module))return half?.35:.45;/' app/src/main/java/com/serghei/footballpredictions/MainActivity.java
+      - name: Apply BestSportStats V3.0 patch
+        run: |
+          python -c "import base64,zlib; open('/tmp/v30.patch','wb').write(zlib.decompress(base64.b64decode(open('v30-patch.b64z').read())))"
+          patch -p0 < /tmp/v30.patch
+      - name: Apply BestSportStats V3.1 patch
+        run: |
+          cat v31.patch.part00 v31.patch.part01 v31.patch.part02 v31.patch.part03 v31.patch.part04 v31.patch.part05 v31.patch.part06 v31.patch.part07 v31.patch.part08 > /tmp/v31.patch
+          patch -p0 < /tmp/v31.patch
+      - name: Apply BestSportStats V3.2 translation audit patch
+        run: |
+          python -c "import base64,zlib; open('/tmp/v32.patch','wb').write(zlib.decompress(base64.b64decode(open('v32-patch.b64z').read())))"
+          patch -p0 < /tmp/v32.patch
+      - name: Apply BestSportStats V3.3 locale and translation fix
+        run: |
+          python -c "import base64,zlib; open('/tmp/v33.patch','wb').write(zlib.decompress(base64.b64decode(open('v33-patch.b64z').read())))"
+          patch -p0 < /tmp/v33.patch
+      - name: Apply BestSportStats V3.4 archive-aware patch
+        run: |
+          python -c "import base64,zlib; open('/tmp/v34.patch','wb').write(zlib.decompress(base64.b64decode(open('v34-patch.b64z').read())))"
+          sed -i '1c--- app/src/main/java/com/serghei/footballpredictions/MainActivity.java' /tmp/v34.patch
+          sed -i '2c+++ app/src/main/java/com/serghei/footballpredictions/MainActivity.java' /tmp/v34.patch
+          patch -p0 < /tmp/v34.patch
+      - name: Apply BestSportStats V3.5 filters and express tickets patch
+        run: |
+          cat v35-patch.b64z.part1 v35-patch.b64z.part2 v35-patch.b64z.part3 v35-patch.b64z.part4 > /tmp/v35.b64
+          python -c "import base64,zlib; open('/tmp/v35.patch','wb').write(zlib.decompress(base64.b64decode(open('/tmp/v35.b64').read())))"
+          patch -p0 < /tmp/v35.patch
+      - name: Apply BestSportStats V3.6 scroll and day-league filter fix
+        run: |
+          python -c "import base64,zlib; open('/tmp/v36.patch','wb').write(zlib.decompress(base64.b64decode(open('v36-patch.b64z').read())))"
+          patch -p0 < /tmp/v36.patch
+      - name: Apply BestSportStats V3.7 UI timezone and match-results patch
+        run: |
+          cat v37-patch.b64z.part1 v37-patch.b64z.part2 v37-patch.b64z.part3 v37-patch.b64z.part4 > /tmp/v37.b64
+          python -c "import base64,zlib; open('/tmp/v37.patch','wb').write(zlib.decompress(base64.b64decode(open('/tmp/v37.b64').read())))"
+          patch -p0 < /tmp/v37.patch
+      - name: Apply BestSportStats V3.8 tickets live status and status-bar patch
+        run: |
+          cat v38-patch.b64z.part1 v38-patch.b64z.part2 v38-patch.b64z.part3 v38-patch.b64z.part4 > /tmp/v38.b64
+          python -c "import base64,zlib; open('/tmp/v38.patch','wb').write(zlib.decompress(base64.b64decode(open('/tmp/v38.b64').read())))"
+          patch -p0 < /tmp/v38.patch
+      - name: Apply BestSportStats V3.9 UI history and accordion patch
+        run: |
+          python -c "import base64,zlib; open('/tmp/v39.patch','wb').write(zlib.decompress(base64.b64decode(open('v39-patch.b64z').read())))"
+          patch -p0 < /tmp/v39.patch
+      - name: Apply working V4.0 feature patch
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/SeriojaMDT/sport.stat.bet/fff6775c9b2bc3b7647ec7408f2840d4daac48c5/v40-patch.b64z -o /tmp/v40-good.b64z
+          python -c "import base64,zlib; open('/tmp/v40.patch','wb').write(zlib.decompress(base64.b64decode(open('/tmp/v40-good.b64z').read())))"
+          patch -p0 < /tmp/v40.patch
+      - name: Apply V4.0.2 scrollbar and odds safety patch
+        run: |
+          python -c "import base64,zlib; open('/tmp/v402.patch','wb').write(zlib.decompress(base64.b64decode(open('v402-patch.b64z').read())))"
+          patch -p0 < /tmp/v402.patch
+      - name: Set Football Stats Analyzer identity and V4.0.2 version
+        run: |
+          sed -i "s/namespace 'com.serghei.footballpredictions'/namespace 'com.turcanapps.bestfootballstats'/" app/build.gradle
+          sed -i "s/applicationId 'com.serghei.footballpredictions'/applicationId 'com.turcanapps.bestfootballstats'/" app/build.gradle
+          sed -i "s/versionCode [0-9][0-9]*/versionCode 220/" app/build.gradle
+          sed -i "s/versionName '[^']*'/versionName '1.1.2-test'/" app/build.gradle
+          sed -i 's/android:label="BestSportStats"/android:label="Football Stats Analyzer"/' app/src/main/AndroidManifest.xml
+          sed -i 's/android:name="\.MainActivity"/android:name="com.turcanapps.bestfootballstats.MainActivity"/' app/src/main/AndroidManifest.xml
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Build debug APK
+        run: gradle :app:assembleDebug --stacktrace
+      - name: Upload V4.0.2 source
+        uses: actions/upload-artifact@v4
+        with:
+          name: football-stats-analyzer-v402-source
+          path: app/src/main/java/com/serghei/footballpredictions/MainActivity.java
+          if-no-files-found: error
+      - name: Upload V4.0.2 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: football-stats-analyzer-v402-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
