@@ -94,10 +94,8 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/SeriojaMDT/sport.stat.bet/fff6775c9b2bc3b7647ec7408f2840d4daac48c5/v40-patch.b64z -o /tmp/v40-good.b64z
           python -c "import base64,zlib; open('/tmp/v40.patch','wb').write(zlib.decompress(base64.b64decode(open('/tmp/v40-good.b64z').read())))"
           patch -p0 < /tmp/v40.patch
-      - name: Apply V4.0.2 scrollbar and odds safety patch
-        run: |
-          python -c "import base64,zlib; open('/tmp/v402.patch','wb').write(zlib.decompress(base64.b64decode(open('v402-patch.b64z').read())))"
-          patch -p0 < /tmp/v402.patch
+      - name: Apply V4.0.2 scrollbar and odds safety changes
+        run: python tools/apply_v402_changes.py
       - name: Set Football Stats Analyzer identity and V4.0.2 version
         run: |
           sed -i "s/namespace 'com.serghei.footballpredictions'/namespace 'com.turcanapps.bestfootballstats'/" app/build.gradle
