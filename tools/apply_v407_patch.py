@@ -4,6 +4,11 @@ import base64, zlib, subprocess, re
 patch = zlib.decompress(base64.b64decode(Path("v407-patch.b64z").read_text().strip()))
 subprocess.run(["patch", "-p0"], input=patch, check=True)
 
+java = Path("app/src/main/java/com/serghei/footballpredictions/MainActivity.java")
+js = java.read_text()
+js = js.replace("if(f.id>0)index.put(f.id,dm);", "if(f.id>0)index.put((long)f.id,dm);")
+java.write_text(js)
+
 g = Path("app/build.gradle")
 s = g.read_text()
 s = re.sub(r"versionCode \d+", "versionCode 225", s, count=1)
