@@ -34,7 +34,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: football-stats-analyzer-v410-source
-          path: app/src/main/java/com/turcanapps/bestfootballstats/MainActivity.java
+          path: app/src/main/java/com/serghei/footballpredictions/MainActivity.java
           if-no-files-found: error
       - name: Upload V4.1.0 APK
         uses: actions/upload-artifact@v4
